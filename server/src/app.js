@@ -9,10 +9,31 @@ import apiRoutes from './routes/index.js';
 
 const app = express();
 
-// CORS Middleware Configuration (credentials: true for cookies)
+// Parse allowed origins from environment variable
+const allowedOrigins = config.clientOrigin
+  ? config.clientOrigin.split(',').map((o) => o.trim().replace(/\/$/, ''))
+  : ['http://localhost:5173'];
+
+// CORS Middleware Configuration (credentials: true for cookies & Bearer tokens)
 app.use(
   cors({
-    origin: config.clientOrigin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      const isAllowed =
+        allowedOrigins.includes(normalizedOrigin) ||
+        allowedOrigins.includes('*') ||
+        normalizedOrigin.endsWith('.vercel.app') ||
+        process.env.NODE_ENV !== 'production';
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS origin not allowed: ${origin}`));
+      }
+    },
     credentials: true,
   })
 );
