@@ -1,7 +1,17 @@
 import * as goalService from '../services/goalService.js';
-import { validateGoalInput } from '../validators/goalValidator.js';
+import { validateGoalInput, validateGoalAnalysisInput } from '../validators/goalValidator.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { HTTP_STATUS } from '../constants/index.js';
+
+export const analyzeGoalPreview = async (req, res, next) => {
+  try {
+    validateGoalAnalysisInput(req.body);
+    const analysis = await goalService.previewGoalAnalysis(req.user._id, req.body);
+    return ApiResponse.success(res, 'Goal analyzed successfully', { analysis }, HTTP_STATUS.OK);
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const createGoal = async (req, res, next) => {
   try {

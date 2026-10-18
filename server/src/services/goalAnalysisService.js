@@ -1,6 +1,9 @@
 /**
  * Goal Analysis Provider Interface & Service Strategy
+ * Integrates Google Gemini AI with deterministic local rule-based fallback
  */
+
+import GeminiGoalAnalysisProvider from './geminiGoalAnalysisProvider.js';
 
 // Skill Taxonomy Dictionary for Local Rule-Based Extraction
 const SKILL_TAXONOMY = [
@@ -19,7 +22,7 @@ const SKILL_TAXONOMY = [
   { keywords: ['kotlin', 'android app'], name: 'Kotlin (Android)', category: 'Mobile Development', level: 'INTERMEDIATE', importance: 'HIGH' },
   
   // AI, ML & Data Science
-  { keywords: ['ai', 'artificial intelligence', 'machine learning', 'ml', 'llm', 'gpt', 'neural'], name: 'Machine Learning & AI', category: 'Data Science & AI', level: 'ADVANCED', importance: 'HIGH' },
+  { keywords: ['ai', 'artificial intelligence', 'machine learning', 'ml', 'llm', 'gpt', 'neural', 'gemini'], name: 'Machine Learning & AI', category: 'Data Science & AI', level: 'ADVANCED', importance: 'HIGH' },
   { keywords: ['pytorch', 'tensorflow', 'model training'], name: 'PyTorch / Deep Learning', category: 'Data Science & AI', level: 'ADVANCED', importance: 'HIGH' },
   { keywords: ['data analysis', 'pandas', 'analytics'], name: 'Data Analytics', category: 'Data Science & AI', level: 'INTERMEDIATE', importance: 'MEDIUM' },
 
@@ -34,13 +37,13 @@ const SKILL_TAXONOMY = [
   { keywords: ['seo', 'marketing', 'growth', 'traffic', 'copywriting'], name: 'Digital Marketing & SEO', category: 'Marketing', level: 'INTERMEDIATE', importance: 'MEDIUM' },
 
   // DevOps & Cloud
-  { keywords: ['deploy', 'deployment', 'aws', 'docker', 'cloud', 'devops', 'ci/cd', 'vercel'], name: 'DevOps & Cloud Deployment', category: 'Infrastructure', level: 'INTERMEDIATE', importance: 'HIGH' },
+  { keywords: ['deploy', 'deployment', 'aws', 'docker', 'cloud', 'devops', 'ci/cd', 'vercel', 'render'], name: 'DevOps & Cloud Deployment', category: 'Infrastructure', level: 'INTERMEDIATE', importance: 'HIGH' },
 ];
 
 /**
  * Base Abstract Provider
  */
-class BaseGoalAnalysisProvider {
+export class BaseGoalAnalysisProvider {
   async analyze(description) {
     throw new Error('Method analyze() must be implemented by provider');
   }
@@ -49,7 +52,7 @@ class BaseGoalAnalysisProvider {
 /**
  * Local Rule-Based Goal Analysis Provider (Free, Standalone Fallback)
  */
-class LocalGoalAnalysisProvider extends BaseGoalAnalysisProvider {
+export class LocalGoalAnalysisProvider extends BaseGoalAnalysisProvider {
   async analyze(description) {
     const text = description.toLowerCase();
     const extractedSkills = [];
@@ -78,7 +81,51 @@ class LocalGoalAnalysisProvider extends BaseGoalAnalysisProvider {
       );
     }
 
-    return extractedSkills;
+    const aiAnalysis = {
+      goalInterpretation: `Goal Blueprint: ${description.slice(0, 140)}${description.length > 140 ? '...' : ''}`,
+      skills: extractedSkills.map((s, idx) => ({
+        name: s.name,
+        category: s.category,
+        level: s.level,
+        importance: s.importance,
+        explanation: `Target competency identified by rule-based taxonomy analysis for achieving this objective.`,
+        learningOrder: idx + 1,
+        prerequisites: idx > 0 ? [extractedSkills[0].name] : [],
+      })),
+      milestones: [
+        {
+          title: 'Foundational Setup & Research',
+          description: 'Establish core workspace, toolchains, and basic principles.',
+          targetTimeline: 'Weeks 1-2',
+        },
+        {
+          title: 'Core Implementation & Skill Building',
+          description: 'Build central components and apply key domain competencies.',
+          targetTimeline: 'Weeks 3-5',
+        },
+        {
+          title: 'Refinement & Peer Exchange Review',
+          description: 'Validate deliverables and engage in peer-to-peer knowledge exchange.',
+          targetTimeline: 'Weeks 6+',
+        },
+      ],
+      estimatedEffort: {
+        estimatedHours: '30-50 hours',
+        timelineRecommendation: '4-6 weeks at 6-8 hrs/week',
+        uncertaintyDisclaimer:
+          'Estimates are advisory based on standard skill acquisition curves; actual progress depends on practice and prior foundation.',
+      },
+      assumptions: [
+        'Dedicated self-paced study and collaborative exchange with peer mentors.',
+      ],
+      generatedBy: 'rule-based',
+      generatedAt: new Date(),
+    };
+
+    return {
+      requiredSkills: extractedSkills,
+      aiAnalysis,
+    };
   }
 }
 
@@ -87,19 +134,62 @@ class LocalGoalAnalysisProvider extends BaseGoalAnalysisProvider {
  */
 class GoalAnalysisService {
   constructor() {
-    // Default to zero-cost Local Provider; can be swapped dynamically to LLM/Gemini provider
-    this.provider = new LocalGoalAnalysisProvider();
+    this.geminiProvider = new GeminiGoalAnalysisProvider();
+    this.localProvider = new LocalGoalAnalysisProvider();
+    this.customProvider = null;
   }
 
   setProvider(providerInstance) {
-    this.provider = providerInstance;
+    this.customProvider = providerInstance;
   }
 
-  async analyzeGoal(description) {
+  getProvider(forceLocal = false) {
+    if (this.customProvider) {
+      return this.customProvider;
+    }
+    if (!forceLocal && this.geminiProvider.isConfigured()) {
+      return this.geminiProvider;
+    }
+    return this.localProvider;
+  }
+
+  async analyzeGoal(description, options = {}) {
     if (!description || typeof description !== 'string' || description.trim().length === 0) {
       throw new Error('Goal description is required for analysis');
     }
-    return await this.provider.analyze(description);
+
+    const provider = this.getProvider(options.forceLocal);
+    const result = await provider.analyze(description);
+
+    // Ensure backwards compatibility if any legacy provider returns an array
+    if (Array.isArray(result)) {
+      return {
+        requiredSkills: result,
+        aiAnalysis: {
+          goalInterpretation: `Goal Analysis: ${description.slice(0, 100)}`,
+          skills: result.map((r, i) => ({
+            name: r.name,
+            category: r.category || 'General',
+            level: r.level || 'INTERMEDIATE',
+            importance: r.importance || 'HIGH',
+            explanation: 'Required competency for goal completion',
+            learningOrder: i + 1,
+            prerequisites: [],
+          })),
+          milestones: [],
+          estimatedEffort: {
+            estimatedHours: '30-50 hours',
+            timelineRecommendation: '4-6 weeks',
+            uncertaintyDisclaimer: 'Estimates are advisory.',
+          },
+          assumptions: [],
+          generatedBy: 'rule-based',
+          generatedAt: new Date(),
+        },
+      };
+    }
+
+    return result;
   }
 }
 

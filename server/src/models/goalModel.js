@@ -82,6 +82,43 @@ const goalSchema = new mongoose.Schema(
       max: 100,
       default: 0,
     },
+    aiAnalysis: {
+      goalInterpretation: { type: String, default: '' },
+      skills: [
+        {
+          name: { type: String, required: true, trim: true },
+          category: { type: String, default: 'General', trim: true },
+          level: {
+            type: String,
+            enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'],
+            default: 'INTERMEDIATE',
+          },
+          importance: {
+            type: String,
+            enum: ['HIGH', 'MEDIUM', 'LOW'],
+            default: 'HIGH',
+          },
+          explanation: { type: String, default: '' },
+          learningOrder: { type: Number, default: 1 },
+          prerequisites: [{ type: String }],
+        },
+      ],
+      milestones: [
+        {
+          title: { type: String, required: true },
+          description: { type: String, default: '' },
+          targetTimeline: { type: String, default: '' },
+        },
+      ],
+      estimatedEffort: {
+        estimatedHours: { type: String, default: '' },
+        timelineRecommendation: { type: String, default: '' },
+        uncertaintyDisclaimer: { type: String, default: '' },
+      },
+      assumptions: [{ type: String }],
+      generatedBy: { type: String, default: 'rule-based' },
+      generatedAt: { type: Date, default: Date.now },
+    },
   },
   {
     timestamps: true,

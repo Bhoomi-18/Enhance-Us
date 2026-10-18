@@ -1,6 +1,6 @@
 # EnhanceUs — Goal-Driven Skill Exchange Platform
 
-EnhanceUs is a goal-driven skill exchange platform built with the MERN stack. Unlike generic skill-swap applications, EnhanceUs connects users based on specific, actionable goal blueprints.
+EnhanceUs is a goal-driven skill exchange platform built with the MERN stack and powered by Google Gemini AI. Unlike generic skill-swap applications, EnhanceUs connects users based on specific, actionable goal blueprints and deterministic skill-gap matching.
 
 ---
 
@@ -11,14 +11,44 @@ USER
   ↓
 DEFINE GOAL (Natural Language Blueprint)
   ↓
-GOAL ANALYSIS ENGINE (Required Skills Extraction)
+GOOGLE GEMINI AI DECOMPOSITION ENGINE
+  ├── Goal Interpretation
+  ├── Competency Hierarchy (Levels, Categories & Explanations)
+  ├── Prerequisite Sequencing & Learning Order
+  ├── Milestones & Concrete Deliverables
+  └── Effort Estimates & Timeline Recommendations
   ↓
-SKILL GAP MATRIX (Required vs. User Skills)
+DETERMINISTIC SKILL GAP MATRIX (Required vs. User Profile Skills)
+  ├── Known Skills (Verified against profile)
+  ├── Partially Mastered Skills (Upgrade needed)
+  └── Missing Skills (Target exchange gaps)
   ↓
 RECIPROCAL MATCHING ENGINE (0-100% Weighted Compatibility Score)
   ↓
 EXCHANGE REQUEST → CONNECTION → MESSAGING → SESSION SCHEDULING → REVIEW & REPUTATION
 ```
+
+---
+
+## 🤖 Google Gemini AI Integration
+
+EnhanceUs integrates Google's official `@google/genai` SDK on the backend to decompose user goals into actionable technical learning plans.
+
+### Key AI Features
+1. **Goal-to-Skill Decomposition**: Transforms natural language descriptions (e.g., *"I want to build and deploy an AI-powered website within two months"*) into 3–7 structured competencies with prerequisite sequencing.
+2. **Beginner-Friendly Explanations**: Provides context for why each skill is needed and what it involves.
+3. **Milestone Roadmaps**: Generates project checkpoints and suggested timelines.
+4. **Estimated Effort with Uncertainty Disclaimer**: Calculates realistic time investments while clearly stating that pace depends on prior foundations.
+5. **Deterministic Gap Classification**: AI proposes the competencies, but the backend deterministically compares them against actual user profile skills. Real user data is never fabricated.
+6. **Graceful Rule-Based Fallback**: If no Gemini API key is configured or offline development is active, EnhanceUs automatically falls back to its built-in rule-based taxonomy engine.
+
+### Gemini Security, Privacy & Safety Architecture
+- **Backend-Only Execution**: The Gemini SDK runs strictly on the Node.js backend. `GEMINI_API_KEY` is never exposed to the client bundle or network calls.
+- **Prompt Injection Isolation**: User goal descriptions are isolated in `<user_goal>` delimiters. System instructions enforce strict schema output and reject embedded commands or role modifications.
+- **Data Minimization**: Only the sanitized goal title and description are sent to Gemini. Passwords, tokens, emails, messages, and unrelated profile data are never transmitted.
+- **Sanitization**: All AI responses are stripped of HTML tags and control characters before rendering or storing.
+- **Per-User Sliding-Window Rate Limiting**: The `aiRateLimiter` middleware throttles excessive calls (max 10 analyses per 5 minutes per user) to safeguard quota.
+- **In-Memory Caching**: Identical goal descriptions within 15 minutes are served from cache to avoid redundant API billing.
 
 ---
 
@@ -35,6 +65,7 @@ EXCHANGE REQUEST → CONNECTION → MESSAGING → SESSION SCHEDULING → REVIEW 
 
 ### Backend
 - **Node.js & Express.js**
+- **Google Gen AI SDK** (`@google/genai`)
 - **MongoDB & Mongoose** (Schemas: User, Goal, Match, ExchangeRequest, Connection, Conversation, Message, Session, Review, Notification)
 - **JWT & HTTP-Only Secure Cookie Authentication**
 - **bcryptjs** (Salted password hashing)
@@ -57,7 +88,7 @@ EXCHANGE REQUEST → CONNECTION → MESSAGING → SESSION SCHEDULING → REVIEW 
 ## 🚀 Onboarding & Navigation
 
 - **Auth-Aware Navigation**:
-  - Unauthenticated visitors on `/` see only public navigation (Logo, How It Works, Features, About, Login, Get Started). Authenticated links (Dashboard, Goals, Matches, Messages, Sessions, Search, Notifications) are omitted.
+  - Unauthenticated visitors on `/` see only public navigation (Logo, How It Works, Features, About, Login, Get Started).
   - Authenticated users visiting `/`, `/login`, or `/register` are automatically redirected to `/dashboard`.
 - **First-Time Signup Onboarding Tour**:
   - Interactive 7-step guided walkthrough covering Goal Creation, Skill Gaps, Reciprocal Matching, Exchange Requests, and Review System.
@@ -76,24 +107,24 @@ enhanceus/
 │   │   │   ├── common/         # OnboardingTourModal, GoalPipelineVisual, ErrorBoundary
 │   │   │   ├── layout/         # Navbar, Footer, PageContainer
 │   │   │   ├── ui/             # Button, Card, Input, Badge, Modal, Spinner, Skeleton, EmptyState
-│   │   │   ├── goals/          # GoalCreateModal
+│   │   │   ├── goals/          # GoalCreateModal (AI preview & review)
 │   │   │   └── profile/        # ProfileEditModal
 │   │   ├── context/            # AuthContext
 │   │   ├── hooks/              # useHealth
-│   │   ├── pages/              # Home, Login, Register, Dashboard, Profile, Goals, GoalDetail, Matches, MatchDetail, Messages, Sessions, Notifications, Search, Settings, 404
+│   │   ├── pages/              # Home, Login, Register, Dashboard, Profile, Goals, GoalDetail (AI Roadmap), Matches, Messages, Sessions, Notifications, Search, Settings, 404
 │   │   ├── routes/             # AppRoutes, ProtectedRoute, PublicOnlyRoute
-│   │   └── services/           # apiClient, authService, goalService, matchingService, exchangeService, conversationService, sessionService, reviewService, notificationService, searchService, userService
+│   │   └── services/           # apiClient, authService, goalService (analyzeGoal), matchingService, sessionService, etc.
 │   ├── .env.example
 │   └── package.json
 ├── server/
 │   ├── src/
 │   │   ├── config/             # db connection, env settings
-│   │   ├── controllers/        # authController, goalController, matchController, exchangeController, conversationController, sessionController, reviewController, notificationController, searchController, userController
-│   │   ├── middleware/         # authMiddleware, errorMiddleware
-│   │   ├── models/             # User, Goal, Match, ExchangeRequest, Connection, Conversation, Message, Session, Review, Notification schemas
-│   │   ├── routes/             # Central route registry
-│   │   ├── services/           # goalService, matchingService, demoProvisioningService, etc.
-│   │   ├── tests/              # securityAndIsolation.test.js
+│   │   ├── controllers/        # goalController (analyzeGoalPreview), authController, matchController, etc.
+│   │   ├── middleware/         # authMiddleware, aiRateLimiter, errorMiddleware
+│   │   ├── models/             # Goal (aiAnalysis schema), User, Match, Session, etc.
+│   │   ├── routes/             # goalRoutes (/analyze), authRoutes, etc.
+│   │   ├── services/           # geminiGoalAnalysisProvider, goalAnalysisService, skillGapEngine, goalService, etc.
+│   │   ├── tests/              # securityAndIsolation.test.js, geminiIntegration.test.js
 │   │   └── server.js
 │   ├── .env.example
 │   └── package.json
@@ -104,7 +135,7 @@ enhanceus/
 
 ## ⚙️ Environment Variables
 
-### Server (`server/.env`)
+### Backend (`server/.env.example`)
 ```env
 PORT=5000
 NODE_ENV=development
@@ -114,10 +145,15 @@ JWT_EXPIRES_IN=7d
 CLIENT_ORIGIN=http://localhost:5173
 DEMO_USER_EMAIL=demo@enhanceus.org
 DEMO_USER_PASSWORD=DemoPassword123!
+
+# Google Gemini AI (Optional - falls back to local rule-based engine if omitted)
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-1.5-flash
+
 MOCK_DB=false
 ```
 
-### Client (`client/.env`)
+### Frontend (`client/.env.example`)
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
 VITE_APP_NAME=EnhanceUs
@@ -125,16 +161,62 @@ VITE_APP_NAME=EnhanceUs
 
 ---
 
-## 🧪 Testing & Building
+## 🔑 How to Obtain and Configure Gemini API Key
 
-### Run Security & Multi-Tenant Isolation Test Suite
+### 1. Obtain an API Key from Google AI Studio
+1. Visit [Google AI Studio](https://aistudio.google.com/).
+2. Sign in with your Google account.
+3. Click **Get API key** in the sidebar.
+4. Click **Create API key** and copy your generated key string.
+
+### 2. Configure Locally
+1. In your local `server/.env` file, add:
+   ```env
+   GEMINI_API_KEY=your_actual_key_here
+   GEMINI_MODEL=gemini-1.5-flash
+   ```
+2. Restart your backend server (`npm run dev` in `server/`).
+
+### 3. Configure in Render (Production)
+1. Go to your [Render Dashboard](https://dashboard.render.com/).
+2. Select your EnhanceUs backend Web Service.
+3. Navigate to **Environment** in the left menu.
+4. Add the environment variables:
+   - `GEMINI_API_KEY`: *(paste your key)*
+   - `GEMINI_MODEL`: `gemini-1.5-flash`
+5. Click **Save Changes**. Render will automatically redeploy with Gemini enabled.
+
+### 4. Free-Tier Availability & Google Policies
+- **Rate Limits**: Google's free-tier for Gemini typically allows 15 RPM (requests per minute) and 1,500 RPD (requests per day). Free tier availability and limits are governed by Google AI Studio policies.
+- **Privacy Notice**: Per Google's terms of service, prompts submitted on the free tier may be logged and reviewed by human reviewers to train and improve Google products. Users handling sensitive proprietary data should review Google's paid tier or enterprise API terms.
+
+---
+
+## 🧪 Testing & Verification
+
+### Run the Gemini AI Integration Test Suite
 ```bash
 cd server
-npm run test
+npm run test:gemini
 ```
-*Executes automated checks for User Registration, Multi-tenant Goal Isolation, Mass-Assignment Protection, Public Profile Sanitization, Onboarding Completion, Zero Demo Data Leakage, and Demo Account Endpoint.*
+*Executes automated checks for:*
+- *Unauthenticated access blocks (401)*
+- *Input length validation (min 10 chars, max 2000 chars)*
+- *Structured AI decomposition and roadmap extraction*
+- *Deterministic skill gap calculations with actual saved profile skills*
+- *Per-user rate limiting (429 Too Many Requests)*
+- *Malformed model response and error handling (502)*
+- *HTML sanitization and prompt injection defense*
+- *Zero secret or key leakage in API responses*
+- *Goal persistence and ownership scoping*
 
-### Production Build
+### Run All Backend Tests (Security, Isolation & Gemini)
+```bash
+cd server
+npm run test:all
+```
+
+### Production Client Build
 ```bash
 cd client
 npm run build
@@ -142,16 +224,11 @@ npm run build
 
 ---
 
-## 📋 Production-Readiness Checklist
+## 🚦 Known Limitations & Troubleshooting
 
-- [x] Backend server ownership checks on all private resources
-- [x] Protected field assignment guard (role, isDemo, reputation)
-- [x] Zero hardcoded demo data in normal user accounts
-- [x] Dedicated demo account (`demo@enhanceus.org`) with idempotent provisioning
-- [x] Public vs Authenticated navigation separation in Navbar
-- [x] Route redirection guards for authenticated & unauthenticated visitors
-- [x] Interactive 7-step onboarding tour with server persistence
-- [x] Public profile response sanitization (`-password -email`)
-- [x] Clean empty states for brand new accounts
-- [x] 100% Passing automated test suite for security & isolation
-- [x] Production build validation passed
+1. **Gemini Free-Tier Rate Limits (429)**:
+   - If multiple users generate goals concurrently, Google may return a 429 quota error. EnhanceUs catches this cleanly and displays a friendly error with a "Retry Analysis" button while preserving user text.
+2. **Cold Starts on Render Free Tier**:
+   - The first request to Render after 15 minutes of inactivity may take ~30–45s while the server spins up.
+3. **No API Key Fallback**:
+   - If `GEMINI_API_KEY` is not provided, EnhanceUs seamlessly uses its rule-based keyword taxonomy engine so the platform remains fully functional.

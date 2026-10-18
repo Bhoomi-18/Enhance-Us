@@ -10,6 +10,10 @@ export const getGoal = async (id) => {
   return await apiClient.get(`/goals/${id}`);
 };
 
+export const analyzeGoal = async (goalData) => {
+  return await apiClient.post('/goals/analyze', goalData);
+};
+
 export const createGoal = async (goalData) => {
   return await apiClient.post('/goals', goalData);
 };

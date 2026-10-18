@@ -7,6 +7,65 @@ import { ApiError } from '../utils/apiError.js';
 // In-Memory Goal Store for Mock DB mode
 const mockGoalsStore = [];
 
+/**
+ * Preview goal decomposition and skill-gap analysis without saving
+ */
+export const previewGoalAnalysis = async (userId, { title, description }) => {
+  if (!description || typeof description !== 'string' || description.trim().length === 0) {
+    throw new ApiError(400, 'Goal description is required for analysis');
+  }
+
+  // Handle Mock DB Mode
+  if (process.env.MOCK_DB === 'true') {
+    const mockUserSkills = [
+      { name: 'React', level: 'ADVANCED', category: 'Frontend' },
+      { name: 'Node.js', level: 'INTERMEDIATE', category: 'Backend' },
+    ];
+
+    const analysisResult = await goalAnalysisService.analyzeGoal(description);
+    const requiredSkills = analysisResult.requiredSkills || [];
+    const aiAnalysis = analysisResult.aiAnalysis || null;
+    const gaps = calculateSkillGaps(mockUserSkills, requiredSkills);
+
+    return {
+      title: (title || '').trim(),
+      description: description.trim(),
+      requiredSkills,
+      aiAnalysis,
+      userSkillsSnapshot: mockUserSkills,
+      skillGaps: gaps,
+      progress: gaps.progress,
+    };
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const analysisResult = await goalAnalysisService.analyzeGoal(description);
+  const requiredSkills = analysisResult.requiredSkills || [];
+  const aiAnalysis = analysisResult.aiAnalysis || null;
+
+  const userSkillsSnapshot = (user.skills || []).map((s) => ({
+    name: s.name,
+    category: s.category || 'General',
+    level: (s.level || 'INTERMEDIATE').toUpperCase(),
+  }));
+
+  const gaps = calculateSkillGaps(userSkillsSnapshot, requiredSkills);
+
+  return {
+    title: (title || '').trim(),
+    description: description.trim(),
+    requiredSkills,
+    aiAnalysis,
+    userSkillsSnapshot,
+    skillGaps: gaps,
+    progress: gaps.progress,
+  };
+};
+
 export const createGoal = async (userId, goalData) => {
   const { title, description, status } = goalData;
 
@@ -21,7 +80,9 @@ export const createGoal = async (userId, goalData) => {
       { name: 'Node.js', level: 'INTERMEDIATE', category: 'Backend' },
     ];
 
-    const requiredSkills = await goalAnalysisService.analyzeGoal(description);
+    const analysisResult = await goalAnalysisService.analyzeGoal(description);
+    const requiredSkills = analysisResult.requiredSkills || [];
+    const aiAnalysis = analysisResult.aiAnalysis || null;
     const gaps = calculateSkillGaps(mockUserSkills, requiredSkills);
 
     const newMockGoal = {
@@ -31,6 +92,7 @@ export const createGoal = async (userId, goalData) => {
       description: description.trim(),
       status: status || 'ACTIVE',
       requiredSkills,
+      aiAnalysis,
       userSkillsSnapshot: mockUserSkills,
       skillGaps: gaps,
       progress: gaps.progress,
@@ -48,17 +110,19 @@ export const createGoal = async (userId, goalData) => {
     throw new ApiError(404, 'User not found');
   }
 
-  // Analyze goal description to extract required skills
-  const requiredSkills = await goalAnalysisService.analyzeGoal(description);
+  // Analyze goal description to extract required skills and rich AI roadmap
+  const analysisResult = await goalAnalysisService.analyzeGoal(description);
+  const requiredSkills = analysisResult.requiredSkills || [];
+  const aiAnalysis = analysisResult.aiAnalysis || null;
 
   // Snapshot user's current skills
-  const userSkillsSnapshot = user.skills.map((s) => ({
+  const userSkillsSnapshot = (user.skills || []).map((s) => ({
     name: s.name,
     category: s.category || 'General',
     level: (s.level || 'INTERMEDIATE').toUpperCase(),
   }));
 
-  // Calculate skill gap matrix and progress
+  // Calculate deterministic skill gap matrix and progress
   const gaps = calculateSkillGaps(userSkillsSnapshot, requiredSkills);
 
   // Save Goal to MongoDB
@@ -68,6 +132,7 @@ export const createGoal = async (userId, goalData) => {
     description: description.trim(),
     status: status || 'ACTIVE',
     requiredSkills,
+    aiAnalysis,
     userSkillsSnapshot,
     skillGaps: gaps,
     progress: gaps.progress,
@@ -123,8 +188,23 @@ export const updateGoal = async (goalId, userId, updateData) => {
 
     if (updateData.title) mockGoalsStore[goalIndex].title = updateData.title.trim();
     if (updateData.status) mockGoalsStore[goalIndex].status = updateData.status;
-    mockGoalsStore[goalIndex].updatedAt = new Date().toISOString();
 
+    if (updateData.description && updateData.description.trim() !== mockGoalsStore[goalIndex].description) {
+      mockGoalsStore[goalIndex].description = updateData.description.trim();
+      const mockUserSkills = [
+        { name: 'React', level: 'ADVANCED', category: 'Frontend' },
+        { name: 'Node.js', level: 'INTERMEDIATE', category: 'Backend' },
+      ];
+      const analysisResult = await goalAnalysisService.analyzeGoal(mockGoalsStore[goalIndex].description);
+      const requiredSkills = analysisResult.requiredSkills || [];
+      const gaps = calculateSkillGaps(mockUserSkills, requiredSkills);
+      mockGoalsStore[goalIndex].requiredSkills = requiredSkills;
+      mockGoalsStore[goalIndex].aiAnalysis = analysisResult.aiAnalysis || null;
+      mockGoalsStore[goalIndex].skillGaps = gaps;
+      mockGoalsStore[goalIndex].progress = gaps.progress;
+    }
+
+    mockGoalsStore[goalIndex].updatedAt = new Date().toISOString();
     return mockGoalsStore[goalIndex];
   }
 
@@ -141,8 +221,11 @@ export const updateGoal = async (goalId, userId, updateData) => {
     goal.description = updateData.description.trim();
     const user = await User.findById(userId);
 
-    const requiredSkills = await goalAnalysisService.analyzeGoal(goal.description);
-    const userSkillsSnapshot = user.skills.map((s) => ({
+    const analysisResult = await goalAnalysisService.analyzeGoal(goal.description);
+    const requiredSkills = analysisResult.requiredSkills || [];
+    const aiAnalysis = analysisResult.aiAnalysis || null;
+
+    const userSkillsSnapshot = (user.skills || []).map((s) => ({
       name: s.name,
       category: s.category || 'General',
       level: (s.level || 'INTERMEDIATE').toUpperCase(),
@@ -150,6 +233,7 @@ export const updateGoal = async (goalId, userId, updateData) => {
 
     const gaps = calculateSkillGaps(userSkillsSnapshot, requiredSkills);
     goal.requiredSkills = requiredSkills;
+    goal.aiAnalysis = aiAnalysis;
     goal.userSkillsSnapshot = userSkillsSnapshot;
     goal.skillGaps = gaps;
     goal.progress = gaps.progress;
