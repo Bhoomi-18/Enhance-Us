@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Star, MessageSquarePlus, CheckCircle2, AlertTriangle, Send } from 'lucide-react';
+import { Star, MessageSquarePlus, CheckCircle2, AlertTriangle, Send, ExternalLink } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
-import { submitFeedback } from '../../services/feedbackService';
+import { submitFeedback, GOOGLE_FEEDBACK_FORM_URL } from '../../services/feedbackService';
 
 const RATING_LABELS = {
   1: 'Needs Improvement',
@@ -117,6 +117,22 @@ export const FeedbackModal = ({ isOpen, onClose }) => {
               <div className="flex-1 font-medium">{errorMessage}</div>
             </div>
           )}
+          {/* Alternative Google Forms Option Banner */}
+          <div className="p-3.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+              <ExternalLink className="w-4 h-4 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+              <span className="font-medium">Prefer Google Forms? You can submit directly in a new tab.</span>
+            </div>
+            <a
+              href={GOOGLE_FEEDBACK_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-700 dark:text-teal-300 bg-white dark:bg-slate-800 hover:bg-teal-100/60 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-700 transition-colors shadow-subtle focus:outline-none focus:ring-2 focus:ring-teal-500 whitespace-nowrap self-start sm:self-auto"
+            >
+              <span>Open Google Feedback Form</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
 
           {/* Question 1: Rating */}
           <div className="space-y-1.5">
@@ -217,25 +233,36 @@ export const FeedbackModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleClose}
-              disabled={isSubmitting}
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            <a
+              href={GOOGLE_FEEDBACK_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400 transition-colors py-1 focus:outline-none focus:underline"
             >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              isLoading={isSubmitting}
-              rightIcon={Send}
-              className="px-5"
-            >
-              Submit Feedback
-            </Button>
+              <span>Open Google Feedback Form</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <div className="flex items-center justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                isLoading={isSubmitting}
+                rightIcon={Send}
+                className="px-5"
+              >
+                Submit Feedback
+              </Button>
+            </div>
           </div>
         </form>
       )}
