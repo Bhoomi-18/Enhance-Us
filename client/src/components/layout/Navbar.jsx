@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Target, Users, Compass, MessageSquare, User, Settings, LayoutDashboard, LogOut, Bell, Calendar, Search, Wifi, WifiOff } from 'lucide-react';
+import { Target, Users, Compass, MessageSquare, User, Settings, LayoutDashboard, LogOut, Bell, Calendar, Search, Wifi, WifiOff, Map } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealth } from '../../hooks/useHealth';
 import { getNotifications } from '../../services/notificationService';
@@ -38,6 +38,7 @@ export const Navbar = () => {
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Goals', path: '/goals', icon: Target },
+    { label: 'Roadmaps', path: '/roadmaps', icon: Map },
     { label: 'Matches', path: '/matches', icon: Users },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
     { label: 'Sessions', path: '/sessions', icon: Calendar },

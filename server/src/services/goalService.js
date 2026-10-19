@@ -5,7 +5,7 @@ import calculateSkillGaps from './skillGapEngine.js';
 import { ApiError } from '../utils/apiError.js';
 
 // In-Memory Goal Store for Mock DB mode
-const mockGoalsStore = [];
+export const mockGoalsStore = [];
 
 /**
  * Preview goal decomposition and skill-gap analysis without saving

@@ -8,6 +8,8 @@ import DashboardPage from '../pages/DashboardPage';
 import ProfilePage from '../pages/ProfilePage';
 import GoalsPage from '../pages/GoalsPage';
 import GoalDetailPage from '../pages/GoalDetailPage';
+import RoadmapsPage from '../pages/RoadmapsPage';
+import RoadmapDetailPage from '../pages/RoadmapDetailPage';
 import MatchesPage from '../pages/MatchesPage';
 import MatchDetailPage from '../pages/MatchDetailPage';
 import MessagesPage from '../pages/MessagesPage';
@@ -82,6 +84,22 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <GoalDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="roadmaps"
+          element={
+            <ProtectedRoute>
+              <RoadmapsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="roadmaps/:id"
+          element={
+            <ProtectedRoute>
+              <RoadmapDetailPage />
             </ProtectedRoute>
           }
         />

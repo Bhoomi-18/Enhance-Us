@@ -13,6 +13,7 @@ import {
   Milestone,
   HelpCircle,
   Users,
+  Compass,
 } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -118,6 +119,11 @@ export const GoalDetailPage = () => {
           <ArrowLeft className="w-4 h-4" /> Back to All Goals
         </Link>
         <div className="flex items-center gap-2">
+          <Link to="/roadmaps">
+            <Button size="sm" variant="outline" leftIcon={Compass} className="border-teal-300 text-teal-700 hover:bg-teal-50">
+              AI Roadmap
+            </Button>
+          </Link>
           <Link to="/matches">
             <Button size="sm" leftIcon={Users} className="bg-teal-600 hover:bg-teal-700">
               Find Peer Matches

@@ -11,6 +11,7 @@ import reviewRoutes from './reviewRoutes.js';
 import notificationRoutes from './notificationRoutes.js';
 import searchRoutes from './searchRoutes.js';
 import userRoutes from './userRoutes.js';
+import roadmapRoutes from './roadmapRoutes.js';
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/skills', skillRoutes);
 router.use('/goals', goalRoutes);
+router.use('/roadmaps', roadmapRoutes);
 router.use('/matches', matchRoutes);
 router.use('/exchanges', exchangeRoutes);
 router.use('/conversations', conversationRoutes);

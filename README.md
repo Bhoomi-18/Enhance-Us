@@ -35,20 +35,53 @@ EXCHANGE REQUEST → CONNECTION → MESSAGING → SESSION SCHEDULING → REVIEW 
 EnhanceUs integrates Google's official `@google/genai` SDK on the backend to decompose user goals into actionable technical learning plans.
 
 ### Key AI Features
-1. **Goal-to-Skill Decomposition**: Transforms natural language descriptions (e.g., *"I want to build and deploy an AI-powered website within two months"*) into 3–7 structured competencies with prerequisite sequencing.
-2. **Beginner-Friendly Explanations**: Provides context for why each skill is needed and what it involves.
-3. **Milestone Roadmaps**: Generates project checkpoints and suggested timelines.
-4. **Estimated Effort with Uncertainty Disclaimer**: Calculates realistic time investments while clearly stating that pace depends on prior foundations.
-5. **Deterministic Gap Classification**: AI proposes the competencies, but the backend deterministically compares them against actual user profile skills. Real user data is never fabricated.
-6. **Graceful Rule-Based Fallback**: If no Gemini API key is configured or offline development is active, EnhanceUs automatically falls back to its built-in rule-based taxonomy engine.
+1. **Goal-to-Skill Decomposition (V2.0)**: Transforms natural language descriptions (e.g., *"I want to build and deploy an AI-powered website within two months"*) into 3–7 structured competencies with prerequisite sequencing.
+2. **Intelligent Learning Roadmap Generation (V2.1)**: Synthesizes personalized, staged learning roadmaps tailored to a selected goal and the user's real profile skills:
+   - **Competency Gap Analysis**: Compares required skills with skills already in the user's profile, distinguishing possessed strengths from skill gaps.
+   - **Chronological Learning Stages**: Breaks learning into progressive stages (Stage 1, Stage 2, Stage 3...) with strategic objectives and clear completion criteria.
+   - **Qualified Duration & Assumptions**: Provides realistic timeline estimates with explicit uncertainty disclaimers and lists key baseline assumptions.
+   - **Skill Exchange Integration**: Every roadmap competency includes a direct link to find peer exchange partners on EnhanceUs.
+3. **Beginner-Friendly Explanations**: Provides context for why each skill is needed and what it involves.
+4. **Deterministic Gap Classification**: AI proposes the competencies, but the backend deterministically compares them against actual user profile skills. Real user data is never fabricated.
+5. **Multi-Tenant Ownership Isolation**: All generated roadmaps are strictly scoped to the authenticated user on the backend. Cross-tenant reads and mutations are denied with safe 404 responses.
+6. **Graceful Fallback & Error Handling**: If no Gemini API key is configured or offline development is active, EnhanceUs returns clear, actionable error messages and never fabricates fake success states.
 
 ### Gemini Security, Privacy & Safety Architecture
 - **Backend-Only Execution**: The Gemini SDK runs strictly on the Node.js backend. `GEMINI_API_KEY` is never exposed to the client bundle or network calls.
-- **Prompt Injection Isolation**: User goal descriptions are isolated in `<user_goal>` delimiters. System instructions enforce strict schema output and reject embedded commands or role modifications.
-- **Data Minimization**: Only the sanitized goal title and description are sent to Gemini. Passwords, tokens, emails, messages, and unrelated profile data are never transmitted.
-- **Sanitization**: All AI responses are stripped of HTML tags and control characters before rendering or storing.
-- **Per-User Sliding-Window Rate Limiting**: The `aiRateLimiter` middleware throttles excessive calls (max 10 analyses per 5 minutes per user) to safeguard quota.
-- **In-Memory Caching**: Identical goal descriptions within 15 minutes are served from cache to avoid redundant API billing.
+- **Prompt Injection Isolation**: User goal descriptions and skills are isolated in `<user_goal>` and `<user_existing_skills>` delimiters. System instructions enforce strict schema output and reject embedded commands or role modifications.
+- **Data Minimization**: Only the sanitized goal title/description and profile skill names/levels are sent to Gemini. Passwords, tokens, emails, messages, and unrelated profile data are never transmitted.
+- **Sanitization & Stage Validation**: All AI responses are stripped of HTML tags and control characters before rendering or storing. Stage skill references are strictly validated against roadmap competencies.
+- **Per-User Sliding-Window Rate Limiting**: The `aiRateLimiter` middleware throttles excessive calls (max 10 requests per 5 minutes per user) to safeguard quota.
+- **In-Memory Caching**: Identical requests within 15 minutes are served from cache to avoid redundant API billing.
+
+---
+
+## 🗺️ V2.1 Learning Roadmap Workflow & API Routes
+
+### Generation Workflow
+```
+[Select Owned Goal]
+       ↓
+[Fetch Goal & User Profile Skills from DB]
+       ↓
+[Construct Delimited Passive Context Prompt]
+       ↓
+[Call Google Gemini AI (@google/genai)]
+       ↓
+[Validate Structured Output & Verify Stage References]
+       ↓
+[Persist Roadmap to MongoDB (Scored by req.user._id)]
+       ↓
+[Render Interactive Detail View with Gap Filters & Mentorship Links]
+```
+
+### Roadmap API Endpoints
+| Method | Route | Description | Auth Required | Rate Limited |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/roadmaps/generate/:goalId` | Generate & persist AI roadmap for owned goal | Yes (JWT/Cookie) | Yes (`aiRateLimiter`) |
+| `GET` | `/api/roadmaps` | List all saved roadmaps for authenticated user | Yes (JWT/Cookie) | No |
+| `GET` | `/api/roadmaps/:id` | Fetch single roadmap with goal details (isolated) | Yes (JWT/Cookie) | No |
+| `DELETE`| `/api/roadmaps/:id` | Delete owned roadmap | Yes (JWT/Cookie) | No |
 
 ---
 
@@ -210,7 +243,22 @@ npm run test:gemini
 - *Zero secret or key leakage in API responses*
 - *Goal persistence and ownership scoping*
 
-### Run All Backend Tests (Security, Isolation & Gemini)
+### Run the Roadmap Integration Test Suite (V2.1)
+```bash
+cd server
+npm run test:roadmap
+```
+*Executes automated checks for:*
+- *Unauthenticated access blocks on all roadmap routes (401)*
+- *Cross-tenant goal access rejection (404/403)*
+- *Personalized AI roadmap generation & persistence (201)*
+- *Structured schema integrity (duration, assumptions, skills, stages)*
+- *Cross-referencing stage skill names against roadmap skills*
+- *Multi-tenant isolation on listing, single fetch, and deletion*
+- *Malformed Gemini JSON handling (502 ApiError)*
+- *HTML tag and script injection sanitization*
+
+### Run All Backend Tests (Security, Gemini & Roadmaps)
 ```bash
 cd server
 npm run test:all

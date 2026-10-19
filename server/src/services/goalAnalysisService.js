@@ -159,7 +159,17 @@ class GoalAnalysisService {
     }
 
     const provider = this.getProvider(options.forceLocal);
-    const result = await provider.analyze(description);
+    let result;
+    try {
+      result = await provider.analyze(description);
+    } catch (err) {
+      if (provider !== this.localProvider) {
+        console.warn('[Goal Analysis] Gemini provider failed, using local rule engine:', err.message);
+        result = await this.localProvider.analyze(description);
+      } else {
+        throw err;
+      }
+    }
 
     // Ensure backwards compatibility if any legacy provider returns an array
     if (Array.isArray(result)) {
