@@ -5,6 +5,9 @@ import Match from '../models/matchModel.js';
 import Message from '../models/messageModel.js';
 import { ApiError } from '../utils/apiError.js';
 
+export const mockExchangeRequestsStore = [];
+export const mockConnectionsStore = [];
+
 export const createExchangeRequest = async (senderId, requestData) => {
   const { recipientId, goalId, matchId, offeredSkill, requestedSkill, proposedExchange } = requestData;
 
@@ -13,10 +16,10 @@ export const createExchangeRequest = async (senderId, requestData) => {
   }
 
   if (process.env.MOCK_DB === 'true') {
-    return {
+    const mockReq = {
       _id: 'mock_request_' + Date.now(),
-      sender: senderId,
-      recipient: recipientId,
+      sender: senderId.toString(),
+      recipient: recipientId.toString(),
       goal: goalId,
       match: matchId,
       offeredSkill,
@@ -25,6 +28,8 @@ export const createExchangeRequest = async (senderId, requestData) => {
       status: 'PENDING',
       createdAt: new Date().toISOString(),
     };
+    mockExchangeRequestsStore.push(mockReq);
+    return mockReq;
   }
 
   // Check for duplicate pending request
@@ -92,10 +97,29 @@ export const getUserExchangeRequests = async (userId) => {
 
 export const acceptExchangeRequest = async (requestId, userId) => {
   if (process.env.MOCK_DB === 'true') {
+    const existingReq = mockExchangeRequestsStore.find((r) => r._id === requestId);
+    const sender = existingReq ? existingReq.sender : 'mock_sender';
+    const goal = existingReq ? existingReq.goal : 'mock_goal_1';
+    const connId = 'mock_conn_' + Date.now();
+    const mockConn = {
+      _id: connId,
+      participants: [
+        { _id: sender, name: 'Peer' },
+        { _id: userId.toString(), name: 'You' },
+      ],
+      goal: { _id: goal, title: 'Collaborative Goal' },
+      skills: {
+        userASkill: existingReq ? existingReq.offeredSkill : 'Skill A',
+        userBSkill: existingReq ? existingReq.requestedSkill : 'Skill B',
+      },
+      status: 'ACTIVE',
+      updatedAt: new Date().toISOString(),
+    };
+    mockConnectionsStore.push(mockConn);
     return {
       success: true,
-      connection: { _id: 'mock_conn_1', status: 'ACTIVE' },
-      conversation: { _id: 'mock_conv_1' },
+      connection: mockConn,
+      conversation: { _id: 'mock_conv_' + Date.now() },
     };
   }
 
@@ -178,3 +202,33 @@ export const declineExchangeRequest = async (requestId, userId) => {
 
   return { success: true };
 };
+
+export const getUserConnections = async (userId) => {
+  const userIdStr = (userId?._id ? userId._id : userId).toString();
+
+  if (process.env.MOCK_DB === 'true') {
+    const userConns = mockConnectionsStore.filter((c) =>
+      c.participants.some((p) => (p._id ? p._id.toString() : p.toString()) === userIdStr)
+    );
+    if (userConns.length > 0) return userConns;
+
+    return [
+      {
+        _id: 'mock_conn_1',
+        participants: [
+          { _id: userIdStr, name: 'You' },
+          { _id: 'mock_user_64656d6f7632', name: 'Sarah Chen (UI/UX Specialist)', email: 'sarah.chen@example.org' },
+        ],
+        goal: { _id: 'mock_goal_1', title: 'Build Full-Stack SaaS Platform' },
+        skills: { userASkill: 'React', userBSkill: 'UI/UX Design' },
+        status: 'ACTIVE',
+      },
+    ];
+  }
+
+  return await Connection.find({ participants: userId, status: 'ACTIVE' })
+    .populate('participants', 'name email avatar reputation')
+    .populate('goal', 'title description')
+    .sort({ updatedAt: -1 });
+};
+

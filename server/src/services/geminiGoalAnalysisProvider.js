@@ -138,19 +138,42 @@ ${sanitizedDescription}
         }, 15000);
       });
 
-      const generatePromise = ai.models.generateContent({
-        model: currentModel,
-        contents: userPrompt,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-          maxOutputTokens: 2048,
-        },
-      });
+      const candidateModels = ['gemini-3.8-flash', currentModel, 'gemini-2.5-flash', 'gemini-1.5-flash'].filter((v, i, a) => a.indexOf(v) === i);
+      let lastErr = null;
 
-      const response = await Promise.race([generatePromise, timeoutPromise]);
-      rawText = response.text || '';
+      for (const m of candidateModels) {
+        try {
+          const res = await Promise.race([
+            ai.models.generateContent({
+              model: m,
+              contents: userPrompt,
+              config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                temperature: 0.2,
+                maxOutputTokens: 2048,
+              },
+            }),
+            timeoutPromise,
+          ]);
+          if (res?.text) {
+            rawText = res.text;
+            break;
+          }
+        } catch (mErr) {
+          lastErr = mErr;
+          const msg = (mErr.message || '');
+          if (msg.includes('not found') || msg.includes('NOT_FOUND') || msg.includes('no longer available')) {
+            console.log(`[Gemini Analysis] Model '${m}' unavailable. Trying next candidate...`);
+            continue;
+          }
+          throw mErr;
+        }
+      }
+
+      if (!rawText && lastErr) {
+        throw lastErr;
+      }
     } catch (err) {
       // Handle known API and network error modes without leaking internal credentials
       if (err instanceof ApiError) throw err;

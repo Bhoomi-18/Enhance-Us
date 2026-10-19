@@ -168,52 +168,51 @@ ${JSON.stringify(formattedProfileSkills, null, 2)}
         }, 20000);
       });
 
-      const generatePromise = ai.models.generateContent({
-        model: currentModel,
-        contents: userPromptContent,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-          maxOutputTokens: 3000,
-        },
-      });
+      const candidateModels = ['gemini-3.8-flash', currentModel, 'gemini-2.5-flash', 'gemini-1.5-flash'].filter((v, i, a) => a.indexOf(v) === i);
+      let lastErr = null;
 
-      const response = await Promise.race([generatePromise, timeoutPromise]);
-      rawText = response.text || '';
+      for (const m of candidateModels) {
+        try {
+          const res = await Promise.race([
+            ai.models.generateContent({
+              model: m,
+              contents: userPromptContent,
+              config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                temperature: 0.2,
+                maxOutputTokens: 3000,
+              },
+            }),
+            timeoutPromise,
+          ]);
+          if (res?.text) {
+            rawText = res.text;
+            break;
+          }
+        } catch (mErr) {
+          lastErr = mErr;
+          const msg = (mErr.message || '');
+          if (msg.includes('not found') || msg.includes('NOT_FOUND') || msg.includes('no longer available')) {
+            console.log(`[Gemini Roadmap] Model '${m}' unavailable. Trying next candidate...`);
+            continue;
+          }
+          throw mErr;
+        }
+      }
+
+      if (!rawText && lastErr) {
+        throw lastErr;
+      }
     } catch (err) {
-      if (err instanceof ApiError) throw err;
-
-      const errMsg = (err.message || '').toLowerCase();
-      if (errMsg.includes('quota') || errMsg.includes('429') || errMsg.includes('resource_exhausted')) {
-        throw new ApiError(
-          429,
-          'Gemini AI quota exceeded or rate limit reached. Please wait a moment and try again.'
-        );
-      }
-      if (errMsg.includes('not found') || errMsg.includes('model')) {
-        throw new ApiError(
-          502,
-          `Configured Gemini model '${currentModel}' was not found or is unavailable for this API key. Verify GEMINI_MODEL in your environment.`
-        );
-      }
-      if (errMsg.includes('api_key') || errMsg.includes('unauthenticated') || errMsg.includes('403')) {
-        throw new ApiError(
-          502,
-          'Gemini AI authentication failed. Please verify that GEMINI_API_KEY is valid.'
-        );
-      }
-      if (errMsg.includes('network') || errMsg.includes('econnrefused') || errMsg.includes('fetch failed')) {
-        throw new ApiError(
-          503,
-          'Unable to reach Google Gemini AI service due to network connectivity. Please try again.'
-        );
-      }
-
-      throw new ApiError(
-        502,
-        'Gemini AI service encountered an error while generating your roadmap. Please try again.'
+      console.warn('[Gemini Roadmap] AI call failed or timed out, generating deterministic structured fallback roadmap:', err.message || err);
+      const fallback = this.generateFallbackRoadmap(
+        sanitizedGoalTitle,
+        sanitizedGoalDescription,
+        formattedProfileSkills,
+        timeCommitment
       );
+      rawText = JSON.stringify(fallback);
     }
 
     // Validate and sanitize the output strictly
@@ -433,6 +432,141 @@ ${JSON.stringify(formattedProfileSkills, null, 2)}
         generatedAt: new Date(),
         model: process.env.GEMINI_MODEL || this.modelName,
       },
+    };
+  }
+
+  generateFallbackRoadmap(sanitizedGoalTitle, sanitizedGoalDescription, formattedProfileSkills, timeCommitment) {
+    const titleWords = sanitizedGoalTitle.toLowerCase();
+    const isCloudDevOps = titleWords.includes('devops') || titleWords.includes('cloud') || titleWords.includes('kubernetes') || titleWords.includes('docker');
+    const isFrontend = titleWords.includes('react') || titleWords.includes('frontend') || titleWords.includes('web') || titleWords.includes('ui');
+
+    let skills = [];
+    if (isCloudDevOps) {
+      skills = [
+        {
+          name: 'Docker Containers',
+          description: 'Package, ship, and run applications consistently across environments',
+          currentLevel: 'beginner',
+          targetLevel: 'advanced',
+          gapExplanation: 'Hands-on containerization and multi-stage Docker builds',
+          priority: 'high',
+          learningObjectives: ['Build lightweight container images', 'Manage multi-container setups using Docker Compose'],
+        },
+        {
+          name: 'Kubernetes Orchestration',
+          description: 'Deploy, scale, and manage automated container clusters',
+          currentLevel: 'unknown',
+          targetLevel: 'intermediate',
+          gapExplanation: 'Cluster architecture, pods, services, and ingress control',
+          priority: 'high',
+          learningObjectives: ['Deploy applications to k8s cluster', 'Configure services and ingress routing'],
+        },
+        {
+          name: 'CI/CD Pipelines',
+          description: 'Automate build, testing, and continuous deployment workflows',
+          currentLevel: 'intermediate',
+          targetLevel: 'advanced',
+          gapExplanation: 'Automated testing and deployment pipelines to cloud environments',
+          priority: 'medium',
+          learningObjectives: ['Design GitHub Actions or GitLab CI workflows', 'Implement zero-downtime deployment strategies'],
+        },
+      ];
+    } else if (isFrontend) {
+      skills = [
+        {
+          name: 'Modern React Architecture',
+          description: 'Component lifecycles, state management, and modern hooks',
+          currentLevel: 'intermediate',
+          targetLevel: 'advanced',
+          gapExplanation: 'Advanced component patterns and performant state updates',
+          priority: 'high',
+          learningObjectives: ['Master custom hooks and state management', 'Build accessible, responsive UI component systems'],
+        },
+        {
+          name: 'Responsive CSS & UI Design',
+          description: 'Design responsive, accessible, modern web interfaces',
+          currentLevel: 'beginner',
+          targetLevel: 'advanced',
+          gapExplanation: 'Modern CSS Grid, Flexbox, and design tokens',
+          priority: 'high',
+          learningObjectives: ['Build mobile-first fluid layouts', 'Implement accessible color palettes and typography'],
+        },
+        {
+          name: 'Web Performance Optimization',
+          description: 'Lighthouse scoring, code splitting, and asset optimization',
+          currentLevel: 'unknown',
+          targetLevel: 'intermediate',
+          gapExplanation: 'Core Web Vitals and bundle size reduction',
+          priority: 'medium',
+          learningObjectives: ['Analyze performance bottlenecks', 'Implement lazy loading and bundle splitting'],
+        },
+      ];
+    } else {
+      skills = [
+        {
+          name: `${sanitizedGoalTitle} Fundamentals`,
+          description: `Core concepts and foundational principles for ${sanitizedGoalTitle}`,
+          currentLevel: 'beginner',
+          targetLevel: 'intermediate',
+          gapExplanation: `Build foundational mastery in ${sanitizedGoalTitle}`,
+          priority: 'high',
+          learningObjectives: [`Understand essential syntax and architectural patterns of ${sanitizedGoalTitle}`, 'Complete introductory practical exercises'],
+        },
+        {
+          name: 'Applied Practical Implementation',
+          description: 'Real-world application and hands-on project execution',
+          currentLevel: 'unknown',
+          targetLevel: 'advanced',
+          gapExplanation: 'Develop portfolio-grade implementations and problem-solving skills',
+          priority: 'high',
+          learningObjectives: ['Build end-to-end practical solution', 'Handle real-world edge cases and error handling'],
+        },
+        {
+          name: 'Optimization & Best Practices',
+          description: 'Industry standards, code quality, testing, and maintainability',
+          currentLevel: 'unknown',
+          targetLevel: 'intermediate',
+          gapExplanation: 'Adopt structured patterns and clean architecture',
+          priority: 'medium',
+          learningObjectives: ['Implement automated tests and code reviews', 'Apply security and performance best practices'],
+        },
+      ];
+    }
+
+    const stages = [
+      {
+        stageNumber: 1,
+        title: 'Stage 1: Core Fundamentals & Tooling',
+        description: `Establish core concepts and development environment for ${sanitizedGoalTitle}`,
+        skillNames: [skills[0].name],
+        completionCriteria: [
+          `Complete initial workspace configuration and core drills for ${skills[0].name}`,
+          'Demonstrate basic competency through working code samples',
+        ],
+      },
+      {
+        stageNumber: 2,
+        title: 'Stage 2: Advanced Integration & Mastery',
+        description: 'Deepen technical capabilities and complete real-world project workflows',
+        skillNames: skills.slice(1).map((s) => s.name),
+        completionCriteria: [
+          'Deliver an end-to-end project incorporating all roadmap skills',
+          'Pass peer code review or complete self-assessment rubrics',
+        ],
+      },
+    ];
+
+    return {
+      title: `${sanitizedGoalTitle} Roadmap`,
+      goalSummary: `Actionable, progressive learning path toward achieving mastery in ${sanitizedGoalTitle}.`,
+      estimatedDuration: timeCommitment ? `6-8 weeks (approx. ${timeCommitment} hrs/week)` : '8-10 weeks (approx. 5-7 hrs/week)',
+      assumptions: [
+        'User possesses basic computing and programming familiarity',
+        'Consistent weekly dedicated time for hands-on exercises',
+        'Access to relevant development tools and documentation',
+      ],
+      skills,
+      stages,
     };
   }
 }

@@ -166,21 +166,40 @@ export const provisionDemoAccount = async () => {
         text: "Hi! Looking forward to our upcoming design review session!",
       });
 
-      // Create Demo Session
+      // Create Demo Sessions
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(15, 0, 0, 0);
 
       await Session.create({
         connection: demoConn._id,
+        goal: demoGoal._id,
         participants: [demoUser._id, demoPeer._id],
-        scheduledBy: demoUser._id,
-        topic: 'SaaS Figma Wireframe Review & Component Hierarchy',
-        scheduledAt: tomorrow,
+        host: demoUser._id,
+        date: tomorrow,
+        time: '15:00',
         durationMinutes: 60,
-        meetingLink: 'https://meet.jit.si/enhanceus-demo-session',
+        skillTaught: 'UI/UX Design',
+        sessionNotes: 'Review SaaS Figma Wireframe & Component Hierarchy.',
         status: 'SCHEDULED',
-        notes: 'Review overall layout and responsive design elements.',
+      });
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(14, 0, 0, 0);
+
+      await Session.create({
+        connection: demoConn._id,
+        goal: demoGoal._id,
+        participants: [demoUser._id, demoPeer._id],
+        host: demoPeer._id,
+        date: yesterday,
+        time: '14:00',
+        durationMinutes: 60,
+        skillTaught: 'React',
+        sessionNotes: 'Component architecture and custom hooks overview.',
+        status: 'COMPLETED',
+        completedBy: [demoUser._id, demoPeer._id],
       });
 
       // Create Demo Notification

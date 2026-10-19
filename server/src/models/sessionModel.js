@@ -5,13 +5,13 @@ const sessionSchema = new mongoose.Schema(
     connection: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Connection',
-      required: true,
+      required: false,
       index: true,
     },
     goal: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Goal',
-      required: true,
+      required: false,
     },
     participants: [
       {

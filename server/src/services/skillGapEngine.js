@@ -34,7 +34,15 @@ export const calculateSkillGaps = (userSkills = [], requiredSkills = []) => {
     const reqLevel = (reqSkill.level || 'INTERMEDIATE').toUpperCase();
     const reqLevelNum = LEVEL_SCORE[reqLevel] || 2;
 
-    const matchedUserSkill = userSkillMap.get(reqName);
+    let matchedUserSkill = userSkillMap.get(reqName);
+    if (!matchedUserSkill) {
+      for (const [uName, uSkill] of userSkillMap.entries()) {
+        if (reqName.includes(uName) || uName.includes(reqName)) {
+          matchedUserSkill = uSkill;
+          break;
+        }
+      }
+    }
 
     if (matchedUserSkill) {
       if (matchedUserSkill.numericLevel >= reqLevelNum) {

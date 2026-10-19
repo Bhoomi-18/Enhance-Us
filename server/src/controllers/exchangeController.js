@@ -37,3 +37,13 @@ export const declineRequest = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getConnections = async (req, res, next) => {
+  try {
+    const connections = await exchangeService.getUserConnections(req.user._id);
+    return ApiResponse.success(res, 'Active connections retrieved', { connections });
+  } catch (error) {
+    next(error);
+  }
+};
+

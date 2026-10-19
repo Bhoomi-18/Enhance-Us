@@ -15,3 +15,8 @@ export const acceptExchangeRequest = async (id) => {
 export const declineExchangeRequest = async (id) => {
   return await apiClient.post(`/exchanges/requests/${id}/decline`);
 };
+
+export const getConnections = async () => {
+  return await apiClient.get('/exchanges/connections');
+};
+

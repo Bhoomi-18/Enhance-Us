@@ -1,62 +1,223 @@
 import Session from '../models/sessionModel.js';
 import User from '../models/userModel.js';
+import Connection from '../models/connectionModel.js';
 import Notification from '../models/notificationModel.js';
 import { ApiError } from '../utils/apiError.js';
 
-const mockSessionsStore = [];
+export const mockSessionsStore = [];
 
 export const createSession = async (userId, sessionData) => {
-  const { connectionId, goalId, recipientId, date, time, durationMinutes, skillTaught, sessionNotes } = sessionData;
+  const {
+    connectionId,
+    goalId,
+    recipientId,
+    date,
+    time,
+    durationMinutes = 60,
+    skillTaught,
+    sessionNotes = '',
+  } = sessionData || {};
 
+  // 1. Validate required fields
+  if (!date) {
+    throw new ApiError(400, 'Session date is required');
+  }
+  if (!time) {
+    throw new ApiError(400, 'Session time is required');
+  }
+  if (!skillTaught || !skillTaught.trim()) {
+    throw new ApiError(400, 'Skill being taught is required');
+  }
+
+  const durationNum = Number(durationMinutes);
+  if (isNaN(durationNum) || durationNum < 15 || durationNum > 240) {
+    throw new ApiError(400, 'Duration must be between 15 and 240 minutes');
+  }
+
+  // 2. Validate date & time
+  const dateStr = typeof date === 'string' && date.includes('T') ? date.split('T')[0] : String(date);
+  const scheduledDateTime = new Date(`${dateStr}T${time}:00`);
+
+  if (isNaN(scheduledDateTime.getTime())) {
+    throw new ApiError(400, 'Invalid date or time format');
+  }
+
+  // Allow a 2-minute buffer for clock drift
+  if (scheduledDateTime.getTime() < Date.now() - 120000) {
+    throw new ApiError(400, 'Session date and time must be set in the future');
+  }
+
+  const hostIdStr = (userId?._id ? userId._id : userId).toString();
+  let resolvedConnectionId = connectionId || null;
+  let resolvedGoalId = goalId || null;
+  let resolvedRecipientId = recipientId ? (recipientId._id ? recipientId._id.toString() : recipientId.toString()) : null;
+
+  // 3. Resolve connection and verify authorization
+  if (resolvedConnectionId) {
+    if (process.env.MOCK_DB === 'true') {
+      const { mockConnectionsStore } = await import('./exchangeService.js');
+      const connection = mockConnectionsStore.find((c) => c._id === resolvedConnectionId);
+      if (connection) {
+        const isParticipant = connection.participants.some(
+          (p) => (p._id ? p._id.toString() : p.toString()) === hostIdStr
+        );
+        if (!isParticipant) {
+          throw new ApiError(403, 'Forbidden: You are not an authorized participant in this connection');
+        }
+
+        if (!resolvedGoalId && connection.goal) {
+          resolvedGoalId = connection.goal._id || connection.goal;
+        }
+
+        if (!resolvedRecipientId) {
+          const other = connection.participants.find(
+            (p) => (p._id ? p._id.toString() : p.toString()) !== hostIdStr
+          );
+          if (other) {
+            resolvedRecipientId = (other._id ? other._id : other).toString();
+          }
+        }
+      }
+    } else {
+      const connection = await Connection.findById(resolvedConnectionId);
+      if (!connection) {
+        throw new ApiError(404, 'Specified connection was not found');
+      }
+
+      const isParticipant = connection.participants.some(
+        (p) => (p._id ? p._id.toString() : p.toString()) === hostIdStr
+      );
+      if (!isParticipant) {
+        throw new ApiError(403, 'Forbidden: You are not an authorized participant in this connection');
+      }
+
+      if (!resolvedGoalId && connection.goal) {
+        resolvedGoalId = connection.goal;
+      }
+
+      if (!resolvedRecipientId) {
+        const other = connection.participants.find(
+          (p) => (p._id ? p._id.toString() : p.toString()) !== hostIdStr
+        );
+        if (other) {
+          resolvedRecipientId = (other._id ? other._id : other).toString();
+        }
+      }
+    }
+  }
+
+  // 4. If no connection was explicitly provided, auto-link existing connection if one exists
+  if (!resolvedConnectionId && resolvedRecipientId && process.env.MOCK_DB !== 'true') {
+    const existingConn = await Connection.findOne({
+      participants: { $all: [userId, resolvedRecipientId] },
+      status: 'ACTIVE',
+    });
+    if (existingConn) {
+      resolvedConnectionId = existingConn._id;
+      if (!resolvedGoalId && existingConn.goal) {
+        resolvedGoalId = existingConn.goal;
+      }
+    }
+  }
+
+  // 5. Validate peer recipient
+  if (!resolvedRecipientId) {
+    throw new ApiError(400, 'A valid peer recipient is required to schedule an exchange session');
+  }
+
+  if (hostIdStr === resolvedRecipientId) {
+    throw new ApiError(400, 'Cannot schedule an exchange session with yourself');
+  }
+
+  // 6. Check recipient user existence (when using real MongoDB)
+  if (process.env.MOCK_DB !== 'true') {
+    const recipientUser = await User.findById(resolvedRecipientId);
+    if (!recipientUser) {
+      throw new ApiError(404, 'Recipient peer user not found');
+    }
+  }
+
+  // 7. Check for duplicate scheduled session at the same date and time
   if (process.env.MOCK_DB === 'true') {
+    const duplicate = mockSessionsStore.find(
+      (s) =>
+        s.status === 'SCHEDULED' &&
+        s.time === time &&
+        s.date.startsWith(dateStr) &&
+        s.participants.includes(hostIdStr) &&
+        s.participants.includes(resolvedRecipientId)
+    );
+    if (duplicate) {
+      throw new ApiError(400, 'A session is already scheduled with this peer at the selected date and time');
+    }
+
     const newMockSession = {
       _id: 'mock_session_' + Date.now(),
-      connection: connectionId || 'mock_conn_1',
-      goal: goalId || 'mock_goal_1',
-      participants: [userId.toString(), (recipientId || 'candidate_user_b').toString()],
-      host: userId.toString(),
-      date: date || new Date().toISOString(),
-      time: time || '14:00',
-      durationMinutes: durationMinutes || 60,
-      skillTaught: skillTaught || 'React',
-      sessionNotes: sessionNotes || 'Initial exchange session',
+      connection: resolvedConnectionId || 'mock_conn_1',
+      goal: resolvedGoalId || 'mock_goal_1',
+      participants: [hostIdStr, resolvedRecipientId],
+      host: hostIdStr,
+      date: scheduledDateTime.toISOString(),
+      time,
+      durationMinutes: durationNum,
+      skillTaught: skillTaught.trim(),
+      sessionNotes: sessionNotes ? sessionNotes.trim() : '',
       status: 'SCHEDULED',
+      completedBy: [],
       createdAt: new Date().toISOString(),
     };
     mockSessionsStore.push(newMockSession);
     return newMockSession;
   }
 
-  const session = await Session.create({
-    connection: connectionId,
-    goal: goalId,
-    participants: [userId, recipientId],
-    host: userId,
-    date,
+  // Real MongoDB Duplicate Check
+  const duplicate = await Session.findOne({
+    participants: { $all: [userId, resolvedRecipientId] },
+    date: scheduledDateTime,
     time,
-    durationMinutes: durationMinutes || 60,
-    skillTaught,
-    sessionNotes: sessionNotes || '',
+    status: 'SCHEDULED',
+  });
+  if (duplicate) {
+    throw new ApiError(400, 'A session is already scheduled with this peer at the selected date and time');
+  }
+
+  // 8. Create Session
+  const session = await Session.create({
+    connection: resolvedConnectionId || null,
+    goal: resolvedGoalId || null,
+    participants: [userId, resolvedRecipientId],
+    host: userId,
+    date: scheduledDateTime,
+    time,
+    durationMinutes: durationNum,
+    skillTaught: skillTaught.trim(),
+    sessionNotes: sessionNotes ? sessionNotes.trim() : '',
     status: 'SCHEDULED',
   });
 
-  // Create notification for recipient
-  await Notification.create({
-    recipient: recipientId,
-    sender: userId,
-    type: 'SESSION_SCHEDULED',
-    title: 'New Exchange Session Scheduled',
-    message: `A new session for ${skillTaught} has been scheduled for ${new Date(date).toLocaleDateString()} at ${time}.`,
-    link: `/sessions`,
-  });
+  // 9. Create notification for recipient
+  try {
+    await Notification.create({
+      recipient: resolvedRecipientId,
+      sender: userId,
+      type: 'SESSION_SCHEDULED',
+      title: 'New Exchange Session Scheduled',
+      message: `A new session for ${skillTaught.trim()} has been scheduled for ${scheduledDateTime.toLocaleDateString()} at ${time}.`,
+      link: `/sessions`,
+    });
+  } catch (notifErr) {
+    console.warn('[Notification Error]', notifErr.message);
+  }
 
   return session;
 };
 
 export const getUserSessions = async (userId, statusFilter) => {
+  const userIdStr = (userId?._id ? userId._id : userId).toString();
+
   if (process.env.MOCK_DB === 'true') {
     let userMockSessions = mockSessionsStore.filter((s) =>
-      s.participants.includes(userId.toString())
+      s.participants.includes(userIdStr)
     );
     if (statusFilter) {
       userMockSessions = userMockSessions.filter((s) => s.status === statusFilter);
@@ -74,10 +235,12 @@ export const getUserSessions = async (userId, statusFilter) => {
 };
 
 export const completeSession = async (sessionId, userId) => {
+  const userIdStr = (userId?._id ? userId._id : userId).toString();
+
   if (process.env.MOCK_DB === 'true') {
     const s = mockSessionsStore.find((item) => item._id === sessionId);
     if (!s) throw new ApiError(404, 'Session not found');
-    if (!s.participants.includes(userId.toString())) {
+    if (!s.participants.includes(userIdStr)) {
       throw new ApiError(403, 'Forbidden: You are not a participant in this session');
     }
     s.status = 'COMPLETED';
@@ -87,29 +250,34 @@ export const completeSession = async (sessionId, userId) => {
   const session = await Session.findById(sessionId);
   if (!session) throw new ApiError(404, 'Session not found');
 
-  const isParticipant = session.participants.some((p) => p.toString() === userId.toString());
-  if (!isParticipant) throw new ApiError(403, 'Forbidden: You are not a participant in this session');
+  const isParticipant = session.participants.some(
+    (p) => (p._id ? p._id.toString() : p.toString()) === userIdStr
+  );
+  if (!isParticipant) {
+    throw new ApiError(403, 'Forbidden: You are not a participant in this session');
+  }
 
-  if (!session.completedBy.includes(userId)) {
+  if (!session.completedBy) session.completedBy = [];
+  if (!session.completedBy.some((id) => id.toString() === userIdStr)) {
     session.completedBy.push(userId);
   }
 
-  // If both participants confirm, mark as COMPLETED
-  if (session.completedBy.length >= 2 || session.participants.length === 1) {
-    session.status = 'COMPLETED';
+  // Mark session as completed
+  session.status = 'COMPLETED';
 
-    // Update participants statistics
-    const hours = (session.durationMinutes || 60) / 60;
-    for (const pId of session.participants) {
-      if (pId.toString() === session.host.toString()) {
-        await User.findByIdAndUpdate(pId, {
-          $inc: { sessionsCompleted: 1, hoursTaught: hours, exchangesCompleted: 1 },
-        });
-      } else {
-        await User.findByIdAndUpdate(pId, {
-          $inc: { sessionsCompleted: 1, hoursLearned: hours, exchangesCompleted: 1 },
-        });
-      }
+  // Update participant statistics
+  const hours = (session.durationMinutes || 60) / 60;
+  for (const pId of session.participants) {
+    const pIdStr = (pId?._id ? pId._id : pId).toString();
+    const hostStr = (session.host?._id ? session.host._id : session.host).toString();
+    if (pIdStr === hostStr) {
+      await User.findByIdAndUpdate(pId, {
+        $inc: { sessionsCompleted: 1, hoursTaught: hours, exchangesCompleted: 1 },
+      });
+    } else {
+      await User.findByIdAndUpdate(pId, {
+        $inc: { sessionsCompleted: 1, hoursLearned: hours, exchangesCompleted: 1 },
+      });
     }
   }
 
@@ -118,10 +286,12 @@ export const completeSession = async (sessionId, userId) => {
 };
 
 export const cancelSession = async (sessionId, userId) => {
+  const userIdStr = (userId?._id ? userId._id : userId).toString();
+
   if (process.env.MOCK_DB === 'true') {
     const s = mockSessionsStore.find((item) => item._id === sessionId);
     if (!s) throw new ApiError(404, 'Session not found');
-    if (!s.participants.includes(userId.toString())) {
+    if (!s.participants.includes(userIdStr)) {
       throw new ApiError(403, 'Forbidden: You are not a participant in this session');
     }
     s.status = 'CANCELLED';
@@ -131,8 +301,16 @@ export const cancelSession = async (sessionId, userId) => {
   const session = await Session.findById(sessionId);
   if (!session) throw new ApiError(404, 'Session not found');
 
-  const isParticipant = session.participants.some((p) => p.toString() === userId.toString());
-  if (!isParticipant) throw new ApiError(403, 'Forbidden: You are not a participant in this session');
+  const isParticipant = session.participants.some(
+    (p) => (p._id ? p._id.toString() : p.toString()) === userIdStr
+  );
+  if (!isParticipant) {
+    throw new ApiError(403, 'Forbidden: You are not a participant in this session');
+  }
+
+  if (session.status === 'COMPLETED') {
+    throw new ApiError(400, 'Cannot cancel an already completed session');
+  }
 
   session.status = 'CANCELLED';
   await session.save();
