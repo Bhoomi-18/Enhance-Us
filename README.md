@@ -272,21 +272,80 @@ EnhanceUs incorporates an accessible, unified theme management system providing 
 
 ---
 
+---
+
+## 📬 Feature: Platform Feedback System & Email Delivery
+
+EnhanceUs provides a dedicated, accessible user feedback workflow accessible from the application footer across both public and authenticated views.
+
+### Key Capabilities
+1. **Footer Integration**: A visible "Feedback" trigger button in the footer opens an accessible modal dialog with smooth animations.
+2. **Standardized Feedback Fields**:
+   - **Rating Scale**: Required 1–5 star rating with accessible labels (Poor, Fair, Good, Very Good, Excellent).
+   - **Improvements & Suggestions**: Optional multi-line textarea with a 1,000-character limit and live character count.
+   - **Feature Requests**: Optional multi-line textarea with a 1,000-character limit and live character count.
+   - **Additional Comments**: Optional open comments textarea with a 1,000-character limit.
+3. **Honest Delivery Guarantees**:
+   - The UI displays the exact confirmation banner: `Feedback submitted. Thank you!` only when the backend confirms valid acceptance and delivery.
+   - If SMTP credentials are missing, unconfigured, or delivery fails, the backend returns an honest HTTP 503/500 and the frontend displays a clear failure message allowing retry. Fake success banners are never shown.
+4. **Backend Security & Anti-Abuse**:
+   - Server-side sliding-window rate limiter: Maximum 5 feedback submissions per 10 minutes per IP/client.
+   - Strict input validation: Rating must be an integer between 1 and 5; text fields cannot exceed 1,000 characters.
+   - Payload sanitization: All incoming HTML tags and control sequences are stripped before email formatting to prevent email injection attacks.
+   - Public & Authenticated Access: Public visitors can submit feedback without logging in; authenticated users automatically have their name and email appended for context.
+   - Zero-Credential Leakage: Feedback recipient addresses and SMTP credentials are kept strictly server-side and never exposed to the client.
+
+### Feedback API Endpoint
+| Method | Route | Description | Auth Required | Rate Limited |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/feedback` | Validate and deliver feedback to platform owner's Gmail | Optional (Public & Auth) | Yes (`feedbackRateLimiter`: 5 per 10m) |
+
+---
+
+## 🧭 Feature: Navigation Cleanup & Top-Right Profile Dropdown
+
+To reduce desktop and mobile navbar clutter, user account actions have been centralized into a top-right profile dropdown menu:
+
+1. **Clean Primary Desktop Bar**:
+   - Displays primary workflow links: `Dashboard`, `Goals`, `Roadmaps`, `Matches`, `Messages`, `Sessions`, and `Search`.
+   - Separate standalone `Settings`, `Profile`, and `Logout` links have been removed from the main navbar.
+2. **Profile Dropdown Trigger**:
+   - Shows user's avatar initial and actual authenticated display name (with graceful fallback to `Account`).
+   - Includes animated chevron indicator with active/focus/hover states.
+   - Keyboard accessible: Closes automatically on `Escape` key and outside clicks.
+3. **Dropdown Menu Actions**:
+   - User identity header with full name, email, and demo mode indicator.
+   - **Profile**: Direct navigation to `/profile`.
+   - **Settings**: Direct navigation to `/settings` (appearance, preferences, and permanent account deletion).
+   - **Log Out**: Opens the Logout Confirmation Modal.
+4. **Session Termination Confirmation**:
+   - Selecting "Log Out" triggers a dedicated modal asking the user to confirm ending their session.
+   - **Cancel**: Dismisses the modal immediately without altering session state or logging out.
+   - **Confirm Logout**: Calls the backend session invalidation endpoint, removes client-side auth tokens, clears private state, and safely redirects to `/login`.
+   - Accessible via both the desktop profile dropdown and the mobile slide-down drawer.
+
+---
+
 ## 🧪 Testing & Verification
+
+### Run the Feedback Integration Test Suite
+```bash
+cd server
+npm run test:feedback
+```
+*Executes 6 automated checks:*
+- *Rejects submission missing required rating (400)*
+- *Rejects invalid rating bounds (<1 or >5) (400)*
+- *Rejects text payloads exceeding 1,000 characters (400)*
+- *Accepts valid public feedback submission with delivery confirmation (200)*
+- *Accepts authenticated feedback submission and captures sender context (200)*
+- *Rate limiting: 429 Too Many Requests triggered when threshold exceeded*
 
 ### Run the Account Deletion Test Suite
 ```bash
 cd server
 npm run test:account
 ```
-*Executes 13 automated checks:*
-- *Unauthenticated deletion rejected (401)*
-- *Password reauthentication check (invalid password returns 401)*
-- *Phrase confirmation check (non-'DELETE' input returns 400)*
-- *Successful account deletion and cascading database cleanup (200)*
-- *Token rejection on `/api/auth/me` and `/api/goals` post-deletion (401)*
-- *Multi-tenant integrity: Unrelated User B account and records preserved*
-- *Demo account protection (403)*
 
 ### Run the Gemini AI Integration Test Suite
 ```bash
@@ -305,7 +364,12 @@ npm run test:roadmap
 cd server
 npm run test:all
 ```
-*Executes all 58 automated unit and integration tests across 4 test suites.*
+*Executes all 64 automated unit and integration tests across 5 test suites:*
+- *11 tests: Security & Multi-Tenant Data Isolation*
+- *13 tests: Google Gemini AI Goal Decomposition*
+- *21 tests: V2.1 AI-Powered Learning Roadmaps*
+- *13 tests: Permanent Account Deletion & Cascading Purge*
+- *6 tests: Platform Feedback Delivery & Rate Limiting*
 
 ### Production Client Build
 ```bash
@@ -315,11 +379,35 @@ npm run build
 
 ---
 
+## ⚙️ Environment Variables Reference
+
+Configure these environment variables in your server hosting environment (Render, Railway, or VPS). **Never commit actual secrets or `.env` files to Git.**
+
+### Server Environment Variables (`server/.env`)
+| Variable | Description | Example / Format |
+| :--- | :--- | :--- |
+| `PORT` | Node.js HTTP server port | `5000` |
+| `NODE_ENV` | Runtime environment mode | `development` or `production` |
+| `MONGO_URI` | MongoDB connection string | `mongodb+srv://...` |
+| `JWT_SECRET` | Secret key for signing authentication tokens | 32+ character random string |
+| `CLIENT_URL` | Frontend origin for CORS and cookies | `http://localhost:5173` or `https://enhanceus.vercel.app` |
+| `GEMINI_API_KEY` | Google Gemini API Key | `AIzaSy...` |
+| `FEEDBACK_TO_EMAIL` | Platform owner Gmail inbox to receive feedback | `your_gmail@gmail.com` |
+| `SMTP_USER` | Authorized Gmail account sending feedback emails | `your_sender_gmail@gmail.com` |
+| `SMTP_PASS` | Google 16-character App Password (not personal password) | `xxxx xxxx xxxx xxxx` |
+| `SMTP_HOST` | SMTP server host (defaults to smtp.gmail.com) | `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP server port (defaults to 465 SSL or 587 TLS) | `465` |
+
+---
+
 ## 🚦 Known Limitations & Troubleshooting
 
-1. **Gemini Free-Tier Rate Limits (429)**:
+1. **Gmail App Password Setup**:
+   - For feedback delivery to work with Gmail, you must enable 2-Step Verification in Google Account Settings, generate a 16-character **App Password** under "Security > 2-Step Verification > App Passwords", and supply it in `SMTP_PASS`.
+2. **Gemini Free-Tier Rate Limits (429)**:
    - If multiple users generate goals concurrently, Google may return a 429 quota error. EnhanceUs catches this cleanly and displays a friendly error with a "Retry Analysis" button while preserving user text.
-2. **Cold Starts on Render Free Tier**:
+3. **Cold Starts on Render Free Tier**:
    - The first request to Render after 15 minutes of inactivity may take ~30–45s while the server spins up.
-3. **No API Key Fallback**:
+4. **No API Key Fallback**:
    - If `GEMINI_API_KEY` is not provided, EnhanceUs seamlessly uses its rule-based keyword taxonomy engine so the platform remains fully functional.
+

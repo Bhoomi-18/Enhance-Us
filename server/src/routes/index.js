@@ -12,6 +12,7 @@ import notificationRoutes from './notificationRoutes.js';
 import searchRoutes from './searchRoutes.js';
 import userRoutes from './userRoutes.js';
 import roadmapRoutes from './roadmapRoutes.js';
+import feedbackRoutes from './feedbackRoutes.js';
 
 const router = Router();
 
@@ -29,5 +30,6 @@ router.use('/sessions', sessionRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/search', searchRoutes);
+router.use('/feedback', feedbackRoutes);
 
 export default router;
