@@ -10,8 +10,8 @@ export const LoadingSpinner = ({ size = 'md', className, label = 'Loading...' })
   };
 
   return (
-    <div className={cn('flex flex-col items-center justify-center p-6 gap-3 text-slate-500', className)}>
-      <Loader2 className={cn('animate-spin text-teal-600', sizes[size])} />
+    <div className={cn('flex flex-col items-center justify-center p-6 gap-3 text-slate-500 dark:text-slate-400', className)}>
+      <Loader2 className={cn('animate-spin text-teal-600 dark:text-teal-400', sizes[size])} />
       {label && <span className="text-xs font-medium tracking-wide">{label}</span>}
     </div>
   );

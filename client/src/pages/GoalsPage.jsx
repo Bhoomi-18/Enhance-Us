@@ -55,8 +55,8 @@ export const GoalsPage = () => {
               onClick={() => setStatusFilter(st)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
                 statusFilter === st
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  ? 'bg-slate-900 dark:bg-teal-600 text-white'
+                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               {st === '' ? 'All Goals' : st}
@@ -75,7 +75,7 @@ export const GoalsPage = () => {
           <LoadingSpinner size="lg" label="Fetching goals..." />
         </div>
       ) : error ? (
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs text-center">
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs text-center">
           {error}
         </div>
       ) : goals.length === 0 ? (
@@ -102,16 +102,16 @@ export const GoalsPage = () => {
                     <Badge variant={goal.status === 'COMPLETED' ? 'emerald' : 'teal'}>
                       {goal.status}
                     </Badge>
-                    <span className="text-xs font-bold text-slate-500">{progress}% Coverage</span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{progress}% Coverage</span>
                   </div>
 
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">{goal.title}</h3>
-                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">{goal.title}</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
                     {goal.description}
                   </p>
 
                   {/* Progress Bar */}
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-4">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden mb-4">
                     <div
                       className="bg-teal-600 h-full transition-all duration-300"
                       style={{ width: `${progress}%` }}
@@ -125,8 +125,8 @@ export const GoalsPage = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400">
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
                     Created {new Date(goal.createdAt).toLocaleDateString()}
                   </span>
                   <Link to={`/goals/${goal._id}`}>

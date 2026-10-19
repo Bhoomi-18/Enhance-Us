@@ -50,39 +50,39 @@ export const DashboardPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <Card hover>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Goals</span>
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Goals</span>
+            <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
               <Target className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-slate-900">{totalGoals}</span>
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">{totalGoals}</span>
             <Badge variant="teal">{totalGoals === 1 ? 'Goal Blueprint' : 'Goal Blueprints'}</Badge>
           </div>
         </Card>
 
         <Card hover>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Identified Skill Gaps</span>
-            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Identified Skill Gaps</span>
+            <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <Zap className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-slate-900">{totalGaps}</span>
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">{totalGaps}</span>
             <Badge variant="rose">Target Competencies</Badge>
           </div>
         </Card>
 
         <Card hover>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Avg Skill Coverage</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avg Skill Coverage</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-slate-900">{avgProgress}%</span>
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">{avgProgress}%</span>
             <Badge variant="emerald">Profile Fit</Badge>
           </div>
         </Card>
@@ -105,7 +105,7 @@ export const DashboardPage = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-8 text-center text-xs text-slate-400">Loading active goals...</div>
+            <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">Loading active goals...</div>
           ) : goals.length === 0 ? (
             <EmptyState
               icon={Target}
@@ -117,18 +117,18 @@ export const DashboardPage = () => {
           ) : (
             <div className="space-y-4">
               {goals.map((goal) => (
-                <div key={goal._id} className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div key={goal._id} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="teal">{goal.status}</Badge>
-                      <h4 className="font-bold text-slate-900 text-sm">{goal.title}</h4>
+                      <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">{goal.title}</h4>
                     </div>
-                    <p className="text-xs text-slate-500 line-clamp-1">{goal.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{goal.description}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <span className="text-xs font-extrabold text-teal-700">{goal.progress}%</span>
-                      <span className="text-[10px] text-slate-400 block">Coverage</span>
+                      <span className="text-xs font-extrabold text-teal-700 dark:text-teal-300">{goal.progress}%</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 block">Coverage</span>
                     </div>
                     <Link to={`/goals/${goal._id}`}>
                       <Button variant="outline" size="sm" rightIcon={ArrowRight}>

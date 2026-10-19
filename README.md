@@ -225,44 +225,87 @@ VITE_APP_NAME=EnhanceUs
 
 ---
 
+---
+
+## 🗑️ Feature: Permanent Account Deletion (GDPR & Privacy Compliance)
+
+EnhanceUs provides a comprehensive, irreversible, permanent account deletion workflow conforming to strict multi-tenant isolation, referential integrity, and data minimization standards.
+
+### Deletion Workflow & Guardrails
+1. **Authenticated Access Only**: Only authenticated users can access the Account Settings Danger Zone. The identity to delete is strictly derived from server-side JWT authentication (`req.user._id`), never client payloads.
+2. **Double Confirmation Protection**:
+   - **Reauthentication**: The user must provide their valid current account password.
+   - **Deliberate Confirmation Phrase**: The user must type the exact case-sensitive word `DELETE`.
+3. **Cascading Referential Cleanup**:
+   - **Private Records**: Complete permanent deletion of the user's account (`User`), goals (`Goal`), AI learning roadmaps (`Roadmap`), algorithmic matches (`Match`), and notifications (`Notification`).
+   - **Shared Records & Connections**:
+     - `ExchangeRequest`: Outgoing and incoming exchange requests involving the user are removed.
+     - `Connection`: Active peer connections involving the user are cleaned up.
+     - `Conversation` & `Message`: Message threads where the user was a participant are deleted; if a thread contains another active learner, personal identifiers are scrubbed.
+     - `Session`: Scheduled exchange sessions are removed or updated to cancelled status.
+     - `Review`: Reviews authored by the deleted user are purged; aggregate peer reputation calculations are preserved.
+4. **Token Invalidation & Session Termination**:
+   - The user's active JWT cookie is immediately cleared (`res.clearCookie('enhanceus_auth_token')`).
+   - An in-memory revocation cache (`mockDeletedUsersSet`) blocks any in-flight tokens from accessing protected endpoints post-deletion.
+   - Client-side `AuthContext` clears all local storage tokens and redirects the user to the landing page with a confirmation banner.
+5. **Demo Account Protection**: The showcase demo account (`demo@enhanceus.org`) is protected against permanent deletion with a `403 Forbidden` response.
+
+### Data Retention & Operational Limitations Notice
+- **Backups**: Data removed from the active database will naturally age out of rolling point-in-time database backups according to standard operational retention schedules (typically 14–30 days).
+- **Legitimate Retention**: System server logs containing anonymized HTTP status codes and timestamps are retained for legitimate security and abuse monitoring purposes. No plaintext credentials or sensitive personal information are ever written to server logs.
+
+---
+
+## 🌗 Feature: Complete Dark Mode & Light Mode Theme System
+
+EnhanceUs incorporates an accessible, unified theme management system providing high-contrast dark and light modes with system preference synchronization.
+
+### Key Capabilities
+1. **Three Theme Modes**:
+   - `light`: Clean, high-legibility slate & teal interface optimized for daytime usage.
+   - `dark`: Sleek deep slate (`#0B0F17` / `#0F172A`) palette with vibrant teal accents and high WCAG contrast.
+   - `system`: Dynamically mirrors the operating system's color scheme (`prefers-color-scheme: dark`) in real-time.
+2. **Zero-Flash Initialization (Anti-FOUC)**: An inline script in `index.html` inspects `localStorage` and media queries prior to React DOM mounting, preventing white flashes on page reload.
+3. **Predictable Persistence**: The user's choice is saved in `localStorage` under the key `enhanceus_theme` and persists across browser refreshes and navigation transitions.
+4. **Universal Coverage**: Dark mode tokens apply across all public routes, authenticated dashboards, goal matrices, AI roadmaps, chat interfaces, settings modals, forms, and custom scrollbars.
+5. **Accessible Toggle**: Available in both desktop and mobile navigation menus with accessible ARIA tags and clear visual indicators.
+
+---
+
 ## 🧪 Testing & Verification
+
+### Run the Account Deletion Test Suite
+```bash
+cd server
+npm run test:account
+```
+*Executes 13 automated checks:*
+- *Unauthenticated deletion rejected (401)*
+- *Password reauthentication check (invalid password returns 401)*
+- *Phrase confirmation check (non-'DELETE' input returns 400)*
+- *Successful account deletion and cascading database cleanup (200)*
+- *Token rejection on `/api/auth/me` and `/api/goals` post-deletion (401)*
+- *Multi-tenant integrity: Unrelated User B account and records preserved*
+- *Demo account protection (403)*
 
 ### Run the Gemini AI Integration Test Suite
 ```bash
 cd server
 npm run test:gemini
 ```
-*Executes automated checks for:*
-- *Unauthenticated access blocks (401)*
-- *Input length validation (min 10 chars, max 2000 chars)*
-- *Structured AI decomposition and roadmap extraction*
-- *Deterministic skill gap calculations with actual saved profile skills*
-- *Per-user rate limiting (429 Too Many Requests)*
-- *Malformed model response and error handling (502)*
-- *HTML sanitization and prompt injection defense*
-- *Zero secret or key leakage in API responses*
-- *Goal persistence and ownership scoping*
 
 ### Run the Roadmap Integration Test Suite (V2.1)
 ```bash
 cd server
 npm run test:roadmap
 ```
-*Executes automated checks for:*
-- *Unauthenticated access blocks on all roadmap routes (401)*
-- *Cross-tenant goal access rejection (404/403)*
-- *Personalized AI roadmap generation & persistence (201)*
-- *Structured schema integrity (duration, assumptions, skills, stages)*
-- *Cross-referencing stage skill names against roadmap skills*
-- *Multi-tenant isolation on listing, single fetch, and deletion*
-- *Malformed Gemini JSON handling (502 ApiError)*
-- *HTML tag and script injection sanitization*
 
-### Run All Backend Tests (Security, Gemini & Roadmaps)
+### Run All Backend Test Suites
 ```bash
 cd server
 npm run test:all
 ```
+*Executes all 58 automated unit and integration tests across 4 test suites.*
 
 ### Production Client Build
 ```bash

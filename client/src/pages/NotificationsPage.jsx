@@ -81,21 +81,21 @@ export const NotificationsPage = () => {
             <Card
               key={notif._id}
               className={`p-4 transition-colors ${
-                notif.read ? 'bg-white border-slate-200' : 'bg-teal-50/40 border-teal-200'
+                notif.read ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-teal-50/40 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800/60'
               }`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded-xl bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Bell className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-xs text-slate-900">{notif.title}</h4>
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">{notif.title}</h4>
                       {!notif.read && <Badge variant="teal" className="text-[9px]">New</Badge>}
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{notif.message}</p>
-                    <span className="text-[10px] text-slate-400 mt-1 block">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{notif.message}</p>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">
                       {new Date(notif.createdAt).toLocaleString()}
                     </span>
                   </div>
@@ -112,7 +112,7 @@ export const NotificationsPage = () => {
                   {!notif.read && (
                     <button
                       onClick={() => handleMarkRead(notif._id)}
-                      className="p-1.5 text-slate-400 hover:text-teal-600 rounded-lg"
+                      className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-teal-600 dark:hover:text-teal-400 rounded-lg transition-colors"
                       title="Mark as read"
                     >
                       <Check className="w-4 h-4" />

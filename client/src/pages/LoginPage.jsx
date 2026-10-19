@@ -63,9 +63,16 @@ export const LoginPage = () => {
             <CardDescription>Log in to access your active goals and peer matches</CardDescription>
           </CardHeader>
           <CardContent>
+            {location.state?.statusMessage && (
+              <div className="mb-5 p-3.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5" />
+                <p className="font-semibold">{location.state.statusMessage}</p>
+              </div>
+            )}
+
             {error && (
-              <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+              <div className="mb-5 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold">{error}</p>
                 </div>
@@ -86,13 +93,13 @@ export const LoginPage = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Password
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsForgotModalOpen(true)}
-                    className="text-xs font-medium text-teal-600 hover:underline"
+                    className="text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline"
                   >
                     Forgot password?
                   </button>
@@ -109,13 +116,13 @@ export const LoginPage = () => {
               </div>
 
               <div className="flex items-center justify-between text-xs my-1">
-                <label className="flex items-center gap-2 cursor-pointer text-slate-600">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-400">
                   <input
                     type="checkbox"
                     name="remember"
                     checked={formData.remember}
                     onChange={handleChange}
-                    className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                    className="rounded border-slate-300 dark:border-slate-700 text-teal-600 focus:ring-teal-500"
                   />
                   <span>Remember session on this device</span>
                 </label>
@@ -127,25 +134,25 @@ export const LoginPage = () => {
             </form>
 
             {/* Explore Demo Account Section */}
-            <div className="mt-6 pt-5 border-t border-slate-200/80">
-              <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-50 to-indigo-50 border border-teal-200/80">
+            <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-800">
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-50 to-indigo-50 dark:from-slate-800/80 dark:to-indigo-950/40 border border-teal-200/80 dark:border-teal-800/60">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-teal-900 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-teal-900 dark:text-teal-200 uppercase tracking-wider">
                     Explore Demo Account
                   </span>
                   <span className="text-[10px] bg-teal-600 text-white font-bold px-2 py-0.5 rounded-full">
                     Instant Access
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">
                   Want to test EnhanceUs without registering? Explore our pre-configured goal blueprint and reciprocal matching demo account.
                 </p>
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
-                    className="w-full text-xs font-bold bg-white text-teal-700 border-teal-300 hover:bg-teal-50"
+                    className="w-full text-xs font-bold bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-slate-700"
                     onClick={() => {
                       setFormData({
                         email: 'demo@enhanceus.org',
@@ -160,9 +167,9 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            <p className="text-center text-xs text-slate-500 mt-6">
+            <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6">
               Don't have an account yet?{' '}
-              <Link to="/register" className="font-semibold text-teal-600 hover:underline">
+              <Link to="/register" className="font-semibold text-teal-600 dark:text-teal-400 hover:underline">
                 Register now
               </Link>
             </p>

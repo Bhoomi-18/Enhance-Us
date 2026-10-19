@@ -164,11 +164,11 @@ export const OnboardingTourModal = ({ isOpen, onClose }) => {
   const StepIcon = current.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col">
         
         {/* Top Progress Line */}
-        <div className="w-full bg-slate-100 h-1.5">
+        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5">
           <div
             className="bg-gradient-to-r from-teal-500 to-indigo-600 h-1.5 transition-all duration-300"
             style={{ width: `${((currentStep + 1) / tourSteps.length) * 100}%` }}
@@ -182,7 +182,7 @@ export const OnboardingTourModal = ({ isOpen, onClose }) => {
           </Badge>
           <button
             onClick={() => handleFinishOrDismiss(false)}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
             title="Skip tour"
           >
             <X className="w-5 h-5" />
@@ -196,18 +196,18 @@ export const OnboardingTourModal = ({ isOpen, onClose }) => {
               <StepIcon className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-extrabold text-slate-900 leading-tight">{current.title}</h3>
-              <p className="text-xs font-semibold text-slate-600">{current.subtitle}</p>
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 leading-tight">{current.title}</h3>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">{current.subtitle}</p>
             </div>
           </div>
 
-          <p className="text-sm text-slate-600 mb-5 leading-relaxed">{current.description}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">{current.description}</p>
 
           {/* Bullet Points */}
-          <div className="space-y-2.5 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 mb-4">
+          <div className="space-y-2.5 bg-slate-50/80 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 mb-4">
             {current.bulletPoints.map((pt, idx) => (
-              <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5" />
+              <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-200">
+                <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5" />
                 <span className="leading-normal">{pt}</span>
               </div>
             ))}
@@ -215,10 +215,10 @@ export const OnboardingTourModal = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer Navigation Bar */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-50/90 border-t border-slate-200/80">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-50/90 dark:bg-slate-900/90 border-t border-slate-200/80 dark:border-slate-800">
           <button
             onClick={() => handleFinishOrDismiss(false)}
-            className="text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors"
+            className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
           >
             Skip Tour
           </button>
@@ -251,7 +251,7 @@ export const OnboardingTourModal = ({ isOpen, onClose }) => {
                 size="sm"
                 onClick={handleNext}
                 rightIcon={ChevronRight}
-                className="bg-slate-900 hover:bg-slate-800 text-xs px-5"
+                className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 text-xs px-5"
               >
                 Next
               </Button>

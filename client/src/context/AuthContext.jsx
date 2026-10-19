@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authService from '../services/authService';
+import * as userService from '../services/userService';
 
 const AuthContext = createContext(null);
 
@@ -70,6 +71,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const handleDeleteAccount = async ({ password, confirmationPhrase }) => {
+    const response = await userService.deleteAccount({ password, confirmationPhrase });
+    localStorage.removeItem('enhanceus_auth_token');
+    setUser(null);
+    setIsAuthenticated(false);
+    return response;
+  };
+
   const value = {
     user,
     isAuthenticated,
@@ -77,6 +86,7 @@ export const AuthProvider = ({ children }) => {
     login: handleLogin,
     register: handleRegister,
     logout: handleLogout,
+    deleteAccount: handleDeleteAccount,
     refreshUser,
   };
 

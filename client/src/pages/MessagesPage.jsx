@@ -124,11 +124,11 @@ export const MessagesPage = () => {
       title="Exchange Communication Workspace"
       subtitle="Manage incoming exchange requests and active peer learning conversations."
       action={
-        <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
           <button
             onClick={() => setActiveTab('messages')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              activeTab === 'messages' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+              activeTab === 'messages' ? 'bg-slate-900 dark:bg-teal-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             Active Conversations ({conversations.length})
@@ -136,12 +136,12 @@ export const MessagesPage = () => {
           <button
             onClick={() => setActiveTab('requests')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-              activeTab === 'requests' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+              activeTab === 'requests' ? 'bg-slate-900 dark:bg-teal-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             <span>Exchange Requests</span>
             {requests.incoming?.length > 0 && (
-              <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center">
+              <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center font-bold">
                 {requests.incoming.length}
               </span>
             )}
@@ -159,8 +159,8 @@ export const MessagesPage = () => {
           
           {/* Incoming Requests */}
           <div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <ArrowLeftRight className="w-4 h-4 text-teal-600" /> Incoming Exchange Proposals ({requests.incoming?.length || 0})
+            <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <ArrowLeftRight className="w-4 h-4 text-teal-600 dark:text-teal-400" /> Incoming Exchange Proposals ({requests.incoming?.length || 0})
             </h3>
             {requests.incoming?.length === 0 ? (
               <Card>
@@ -173,18 +173,18 @@ export const MessagesPage = () => {
             ) : (
               <div className="space-y-4">
                 {requests.incoming.map((req) => (
-                  <Card key={req._id} className="border-teal-200 bg-gradient-to-r from-white to-teal-50/30">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3 pb-3 border-b border-slate-100">
+                  <Card key={req._id} className="border-teal-200 dark:border-teal-900/40 bg-gradient-to-r from-white to-teal-50/30 dark:from-slate-900 dark:to-teal-950/20">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                       <div>
-                        <span className="text-xs font-bold text-slate-900">{req.sender?.name || 'Peer Candidate'}</span>
-                        <p className="text-[11px] text-slate-500">Goal: {req.goal?.title || 'Active Goal'}</p>
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{req.sender?.name || 'Peer Candidate'}</span>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Goal: {req.goal?.title || 'Active Goal'}</p>
                       </div>
                       <Badge variant="teal">Exchange Proposal</Badge>
                     </div>
 
-                    <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs mb-4">
-                      <p className="text-slate-700 italic">"{req.proposedExchange}"</p>
-                      <div className="mt-2 pt-2 border-t border-slate-100 font-semibold text-teal-700 flex items-center gap-2">
+                    <div className="p-3 bg-white dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs mb-4">
+                      <p className="text-slate-700 dark:text-slate-300 italic">"{req.proposedExchange}"</p>
+                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 font-semibold text-teal-700 dark:text-teal-400 flex items-center gap-2">
                         <span>They offer: <strong>{req.offeredSkill}</strong></span>
                         <span>&harr;</span>
                         <span>They request: <strong>{req.requestedSkill}</strong></span>
@@ -207,18 +207,18 @@ export const MessagesPage = () => {
 
           {/* Outgoing Requests */}
           <div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
+            <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
               Outgoing Sent Proposals ({requests.outgoing?.length || 0})
             </h3>
             {requests.outgoing?.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">No outgoing requests sent yet.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 italic">No outgoing requests sent yet.</p>
             ) : (
               <div className="space-y-3">
                 {requests.outgoing.map((req) => (
-                  <div key={req._id} className="p-4 bg-white rounded-2xl border border-slate-200/80 flex items-center justify-between text-xs shadow-subtle">
+                  <div key={req._id} className="p-4 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs shadow-subtle">
                     <div>
-                      <p className="font-bold text-slate-900">To: {req.recipient?.name || 'Peer'}</p>
-                      <p className="text-[11px] text-slate-500">Proposed: Exchanging {req.offeredSkill} for {req.requestedSkill}</p>
+                      <p className="font-bold text-slate-900 dark:text-slate-100">To: {req.recipient?.name || 'Peer'}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">Proposed: Exchanging {req.offeredSkill} for {req.requestedSkill}</p>
                     </div>
                     <Badge variant={req.status === 'ACCEPTED' ? 'emerald' : req.status === 'DECLINED' ? 'rose' : 'slate'}>
                       {req.status}
@@ -236,14 +236,14 @@ export const MessagesPage = () => {
           
           {/* Left Column: Conversations List */}
           <Card className="md:col-span-1 flex flex-col p-4 overflow-hidden">
-            <div className="mb-3 pb-3 border-b border-slate-100 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Active Conversations</span>
+            <div className="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Active Conversations</span>
               <Badge variant="teal">{conversations.length}</Badge>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2">
               {conversations.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-400">
+                <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500">
                   No active conversations yet. Accept an exchange request to open a chat.
                 </div>
               ) : (
@@ -257,17 +257,17 @@ export const MessagesPage = () => {
                       onClick={() => setActiveConversationId(conv._id)}
                       className={`p-3 rounded-xl cursor-pointer transition-colors border ${
                         isActive
-                          ? 'bg-slate-900 text-white border-slate-900'
-                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-800'
+                          ? 'bg-slate-900 dark:bg-teal-900/40 text-white border-slate-900 dark:border-teal-700'
+                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold text-xs">{otherParticipant.name || 'Exchange Partner'}</span>
-                        <span className={`text-[10px] ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>
+                        <span className={`text-[10px] ${isActive ? 'text-slate-300 dark:text-teal-200' : 'text-slate-400 dark:text-slate-500'}`}>
                           {conv.lastMessage?.createdAt ? new Date(conv.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                       </div>
-                      <p className={`text-xs truncate ${isActive ? 'text-slate-300' : 'text-slate-500'}`}>
+                      <p className={`text-xs truncate ${isActive ? 'text-slate-300 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
                         {conv.lastMessage?.text || 'Start chatting...'}
                       </p>
                     </div>
@@ -284,24 +284,24 @@ export const MessagesPage = () => {
                 <LoadingSpinner size="md" label="Loading chat history..." />
               </div>
             ) : !activeChat ? (
-              <div className="flex-1 flex flex-col justify-center items-center text-center p-6 text-slate-400 text-xs">
-                <MessageSquare className="w-8 h-8 mb-2 text-slate-300" />
+              <div className="flex-1 flex flex-col justify-center items-center text-center p-6 text-slate-400 dark:text-slate-500 text-xs">
+                <MessageSquare className="w-8 h-8 mb-2 text-slate-300 dark:text-slate-600" />
                 Select a conversation from the sidebar to start messaging.
               </div>
             ) : (
               <div className="flex-1 flex flex-col h-full">
                 
                 {/* Chat Header */}
-                <div className="pb-3 mb-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="pb-3 mb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-teal-600 dark:bg-teal-500 text-white flex items-center justify-center font-bold text-xs">
                       {activeChat.conversation?.participants?.[0]?.name?.charAt(0) || 'P'}
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-slate-900">
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">
                         {activeChat.conversation?.participants?.map((p) => p.name).join(' & ')}
                       </h4>
-                      <span className="text-[10px] text-teal-600 font-semibold flex items-center gap-1">
+                      <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1">
                         <ShieldCheck className="w-3 h-3" /> Active Exchange Session
                       </span>
                     </div>
@@ -313,7 +313,7 @@ export const MessagesPage = () => {
                 </div>
 
                 {/* Message Log Thread */}
-                <div className="flex-1 overflow-y-auto space-y-3 p-2 bg-slate-50/50 rounded-xl mb-4 border border-slate-100">
+                <div className="flex-1 overflow-y-auto space-y-3 p-2 bg-slate-50/50 dark:bg-slate-950/40 rounded-xl mb-4 border border-slate-100 dark:border-slate-800">
                   {activeChat.messages?.map((msg) => {
                     const isSelf = msg.sender?._id === user?._id || msg.sender === user?._id;
 
@@ -325,8 +325,8 @@ export const MessagesPage = () => {
                         <div
                           className={`max-w-[80%] p-3 rounded-2xl text-xs ${
                             isSelf
-                              ? 'bg-teal-600 text-white rounded-br-none shadow-sm'
-                              : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-subtle'
+                              ? 'bg-teal-600 dark:bg-teal-500 text-white rounded-br-none shadow-sm'
+                              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-none shadow-subtle'
                           }`}
                         >
                           <span className="block font-bold text-[10px] opacity-75 mb-0.5">
@@ -349,7 +349,7 @@ export const MessagesPage = () => {
                     placeholder="Type your message..."
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                   <Button type="submit" isLoading={sending} rightIcon={Send} size="sm">
                     Send

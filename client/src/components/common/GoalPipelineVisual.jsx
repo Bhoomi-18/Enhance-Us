@@ -65,17 +65,17 @@ export const GoalPipelineVisual = () => {
   }, [steps.length]);
 
   return (
-    <div className="w-full bg-white/80 backdrop-blur-md rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-card relative overflow-hidden">
+    <div className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-8 shadow-card dark:shadow-none relative overflow-hidden transition-colors">
       {/* Background Subtle Gradient Grid */}
-      <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
 
       {/* Top Interactive Banner */}
-      <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100 relative z-10">
+      <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100 dark:border-slate-800 relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse" />
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">EnhanceUs Concept Engine</span>
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">EnhanceUs Concept Engine</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-teal-700 font-semibold bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200/80">
+        <div className="flex items-center gap-1.5 text-xs text-teal-700 dark:text-teal-300 font-semibold bg-teal-50 dark:bg-teal-950/60 px-2.5 py-1 rounded-full border border-teal-200/80 dark:border-teal-800/60">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Interactive Pipeline</span>
         </div>
@@ -94,10 +94,10 @@ export const GoalPipelineVisual = () => {
               onClick={() => setActiveStep(idx)}
               className={`cursor-pointer rounded-2xl p-4 transition-all duration-300 border flex flex-col justify-between relative ${
                 isActive
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-elevated scale-[1.02]'
+                  ? 'bg-slate-900 dark:bg-slate-950 text-white border-slate-900 dark:border-teal-500/50 shadow-elevated scale-[1.02]'
                   : isPassed
-                  ? 'bg-teal-50/60 border-teal-200 text-slate-800'
-                  : 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100/80'
+                  ? 'bg-teal-50/60 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800 text-slate-800 dark:text-slate-200'
+                  : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800'
               }`}
             >
               {/* Connector indicator for desktop */}
@@ -105,7 +105,7 @@ export const GoalPipelineVisual = () => {
                 <div className="hidden md:block absolute -right-3.5 top-1/2 -translate-y-1/2 z-20">
                   <div
                     className={`w-3 h-3 rounded-full border-2 ${
-                      idx < activeStep ? 'bg-teal-500 border-teal-600' : 'bg-slate-200 border-slate-300'
+                      idx < activeStep ? 'bg-teal-500 border-teal-600' : 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600'
                     }`}
                   />
                 </div>
@@ -115,7 +115,7 @@ export const GoalPipelineVisual = () => {
                 <div className="flex items-center justify-between mb-3">
                   <span
                     className={`text-[10px] font-bold uppercase tracking-wider ${
-                      isActive ? 'text-teal-400' : 'text-slate-400'
+                      isActive ? 'text-teal-400' : 'text-slate-400 dark:text-slate-500'
                     }`}
                   >
                     {step.title}
@@ -127,7 +127,7 @@ export const GoalPipelineVisual = () => {
                   ) : (
                     <div
                       className={`w-7 h-7 rounded-xl flex items-center justify-center ${
-                        isActive ? 'bg-white/10 text-teal-400' : 'bg-slate-200/60 text-slate-600'
+                        isActive ? 'bg-white/10 text-teal-400' : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -135,16 +135,16 @@ export const GoalPipelineVisual = () => {
                   )}
                 </div>
 
-                <p className={`text-xs font-extrabold leading-snug ${isActive ? 'text-white' : 'text-slate-800'}`}>
+                <p className={`text-xs font-extrabold leading-snug ${isActive ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>
                   {step.label}
                 </p>
               </div>
 
               <div className="mt-4 pt-2 border-t border-current/10 flex items-center justify-between text-[10px]">
-                <span className={isActive ? 'text-slate-300 font-medium' : 'text-slate-500 font-normal'}>
+                <span className={isActive ? 'text-slate-300 font-medium' : 'text-slate-500 dark:text-slate-400 font-normal'}>
                   {step.badge}
                 </span>
-                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-teal-400 animate-ping' : 'bg-slate-300'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-teal-400 animate-ping' : 'bg-slate-300 dark:bg-slate-600'}`} />
               </div>
             </div>
           );
@@ -152,14 +152,14 @@ export const GoalPipelineVisual = () => {
       </div>
 
       {/* Bottom Dynamic Status Line */}
-      <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 relative z-10">
+      <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 relative z-10">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-700">Active Node State:</span>
-          <span className="font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+          <span className="font-semibold text-slate-700 dark:text-slate-300">Active Node State:</span>
+          <span className="font-mono text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded border border-teal-200 dark:border-teal-800">
             {steps[activeStep].title} &rarr; {steps[activeStep].label}
           </span>
         </div>
-        <span className="text-[11px] text-slate-400">Click any node to explore stage details</span>
+        <span className="text-[11px] text-slate-400 dark:text-slate-500">Click any node to explore stage details</span>
       </div>
     </div>
   );

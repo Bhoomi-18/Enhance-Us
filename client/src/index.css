@@ -9,10 +9,21 @@
     --color-border: #E2E8F0;
   }
 
+  .dark {
+    --color-bg-app: #0B0F17;
+    --color-surface: #0F172A;
+    --color-border: #1E293B;
+  }
+
   body {
     background-color: var(--color-bg-app);
     color: #0F172A;
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  }
+
+  .dark body {
+    background-color: var(--color-bg-app);
+    color: #F8FAFC;
   }
 }
 
@@ -33,4 +44,12 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }

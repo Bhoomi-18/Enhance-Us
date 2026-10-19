@@ -10,7 +10,8 @@
     "test": "node src/tests/securityAndIsolation.test.js",
     "test:gemini": "node src/tests/geminiIntegration.test.js",
     "test:roadmap": "node src/tests/roadmapIntegration.test.js",
-    "test:all": "node src/tests/securityAndIsolation.test.js && node src/tests/geminiIntegration.test.js && node src/tests/roadmapIntegration.test.js"
+    "test:account": "node src/tests/accountDeletion.test.js",
+    "test:all": "node src/tests/securityAndIsolation.test.js && node src/tests/geminiIntegration.test.js && node src/tests/roadmapIntegration.test.js && node src/tests/accountDeletion.test.js"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",

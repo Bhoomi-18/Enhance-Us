@@ -24,6 +24,10 @@ export const authenticateUser = async (req, res, next) => {
 
     // If mock DB is enabled for offline testing
     if (process.env.MOCK_DB === 'true') {
+      const { mockDeletedUsersSet } = await import('../services/userService.js');
+      if (mockDeletedUsersSet.has(decoded.id)) {
+        throw new ApiError(401, 'Not authorized, user account was permanently deleted');
+      }
       req.user = {
         _id: decoded.id,
         name: decoded.name || 'User',

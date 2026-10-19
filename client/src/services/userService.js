@@ -10,3 +10,9 @@ export const getPublicProfile = async (userId) => {
 export const completeOnboarding = async () => {
   return await apiClient.post('/users/onboarding/complete', {});
 };
+
+export const deleteAccount = async ({ password, confirmationPhrase }) => {
+  return await apiClient.delete('/users/me', {
+    data: { password, confirmationPhrase },
+  });
+};

@@ -156,7 +156,7 @@ export const RoadmapsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-8 px-4 sm:px-6 lg:px-8 transition-colors">
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header Banner */}
@@ -196,15 +196,15 @@ export const RoadmapsPage = () => {
 
         {/* Global Error Banner */}
         {error && (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-800 text-sm">
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-start gap-3 text-rose-800 dark:text-rose-300 text-sm">
+            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-semibold">Unable to load roadmaps</p>
-              <p className="mt-0.5 text-xs text-rose-700">{error}</p>
+              <p className="mt-0.5 text-xs text-rose-700 dark:text-rose-400">{error}</p>
             </div>
             <button
               onClick={fetchRoadmaps}
-              className="text-xs font-bold text-rose-700 hover:underline shrink-0"
+              className="text-xs font-bold text-rose-700 dark:text-rose-300 hover:underline shrink-0"
             >
               Retry
             </button>
@@ -215,7 +215,7 @@ export const RoadmapsPage = () => {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <LoadingSpinner size="lg" />
-            <p className="mt-4 text-sm font-semibold text-slate-600">
+            <p className="mt-4 text-sm font-semibold text-slate-600 dark:text-slate-400">
               Loading your saved roadmaps...
             </p>
           </div>
@@ -226,12 +226,8 @@ export const RoadmapsPage = () => {
               icon={Compass}
               title="No Learning Roadmaps Yet"
               description="Select one of your goals to generate a personalized, staged roadmap decomposed into competencies, milestones, and required skill progression."
-              action={
-                <Button onClick={handleOpenGenerateModal} variant="teal" className="mt-4">
-                  <Sparkles className="w-4 h-4 mr-1.5" />
-                  Generate Your First Roadmap
-                </Button>
-              }
+              actionLabel="Generate Your First Roadmap"
+              onAction={handleOpenGenerateModal}
             />
           </Card>
         ) : (
@@ -246,60 +242,60 @@ export const RoadmapsPage = () => {
               return (
                 <Card
                   key={rm._id}
-                  className="flex flex-col justify-between hover:shadow-lg transition-all duration-200 border-slate-200/80 group"
+                  className="flex flex-col justify-between hover:shadow-lg transition-all duration-200 border-slate-200/80 dark:border-slate-800 group"
                 >
                   <div className="p-5 space-y-4">
                     {/* Associated Goal Label */}
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100 max-w-[80%] truncate">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 px-2.5 py-1 rounded-full border border-teal-100 dark:border-teal-800 max-w-[80%] truncate">
                         <Target className="w-3.5 h-3.5 shrink-0" />
                         <span className="truncate">{rm.goal?.title || 'Goal Roadmap'}</span>
                       </div>
-                      <span className="text-[11px] text-slate-600">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
                         {new Date(rm.createdAt).toLocaleDateString()}
                       </span>
                     </div>
 
                     {/* Roadmap Title */}
                     <div>
-                      <h3 className="font-extrabold text-slate-900 text-base group-hover:text-teal-700 transition-colors line-clamp-2">
+                      <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors line-clamp-2">
                         {rm.title}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                         {rm.goalSummary}
                       </p>
                     </div>
 
                     {/* Metrics Bar */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
-                      <div className="flex items-center gap-1.5 text-slate-600">
-                        <Clock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                      <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                        <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
                         <span className="truncate text-[11px]" title={rm.estimatedDuration}>
                           {rm.estimatedDuration}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-slate-600 justify-end">
-                        <Layers className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 justify-end">
+                        <Layers className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
                         <span className="text-[11px] font-medium">{stagesCount} Stages</span>
                       </div>
                     </div>
 
                     {/* Skill Gap Breakdown Pills */}
                     <div className="flex items-center gap-2 pt-1 text-[11px]">
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-100 dark:border-emerald-800">
                         {possessedSkills} Possessed
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-semibold border border-amber-100">
+                      <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold border border-amber-100 dark:border-amber-800">
                         {gapSkills} Gaps to Bridge
                       </span>
                     </div>
                   </div>
 
                   {/* Card Footer Actions */}
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 rounded-b-2xl flex items-center justify-between gap-3">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 rounded-b-2xl flex items-center justify-between gap-3">
                     <button
                       onClick={() => setRoadmapToDelete(rm)}
-                      className="text-slate-600 hover:text-rose-600 p-1.5 rounded-lg hover:bg-white transition-colors"
+                      className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-colors"
                       title="Delete roadmap"
                       aria-label="Delete roadmap"
                     >
@@ -308,7 +304,7 @@ export const RoadmapsPage = () => {
 
                     <Link
                       to={`/roadmaps/${rm._id}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 hover:text-teal-800 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-200 transition-colors"
                     >
                       View Roadmap
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -331,16 +327,16 @@ export const RoadmapsPage = () => {
           {isGoalsLoading ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
               <LoadingSpinner size="md" />
-              <p className="text-xs text-slate-500">Retrieving your goals...</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Retrieving your goals...</p>
             </div>
           ) : goals.length === 0 ? (
             <div className="text-center py-8 space-y-4">
-              <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto">
                 <Target className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-800">You don't have any goals yet</p>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">You don't have any goals yet</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                   Learning roadmaps are personalized to your goals. Create a goal first to generate a structured roadmap.
                 </p>
               </div>
@@ -359,8 +355,8 @@ export const RoadmapsPage = () => {
             <form onSubmit={handleGenerateSubmit} className="space-y-4 mt-2">
               {/* Generation Error Banner */}
               {generationError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
                   <div className="flex-1">
                     <p className="font-semibold">Generation Failed</p>
                     <p className="mt-0.5">{generationError}</p>
@@ -370,14 +366,14 @@ export const RoadmapsPage = () => {
 
               {/* Goal Selection */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Select Goal <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={selectedGoalId}
                   onChange={(e) => setSelectedGoalId(e.target.value)}
                   disabled={isGenerating}
-                  className="w-full text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  className="w-full text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                 >
                   {goals.map((g) => (
                     <option key={g._id} value={g._id}>
@@ -385,25 +381,25 @@ export const RoadmapsPage = () => {
                     </option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-600 mt-1">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                   Gemini AI will analyze this goal's description against your current profile skills.
                 </p>
               </div>
 
               {/* Context Disclosure Box */}
-              <div className="p-3 bg-teal-50/70 border border-teal-100 rounded-xl text-xs text-teal-800 space-y-1">
+              <div className="p-3 bg-teal-50/70 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-900/60 rounded-xl text-xs text-teal-800 dark:text-teal-300 space-y-1">
                 <div className="flex items-center gap-1.5 font-bold">
-                  <Info className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                  <Info className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
                   <span>How Personalization Works</span>
                 </div>
-                <p className="text-[11px] text-teal-700 leading-relaxed">
+                <p className="text-[11px] text-teal-700 dark:text-teal-300 leading-relaxed">
                   EnhanceUs compares the selected goal against your saved profile skills to identify your known strengths, highlight skill gaps, and calibrate prerequisite stages.
                 </p>
               </div>
 
               {/* Optional Target Outcome */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Target Outcome / Milestones (Optional)
                 </label>
                 <input
@@ -413,13 +409,13 @@ export const RoadmapsPage = () => {
                   onChange={(e) => setTargetOutcome(e.target.value)}
                   disabled={isGenerating}
                   maxLength={300}
-                  className="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  className="w-full text-xs text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                 />
               </div>
 
               {/* Weekly Time Commitment */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Weekly Commitment (Hours / Week)
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -432,7 +428,7 @@ export const RoadmapsPage = () => {
                       className={`py-2 text-xs font-bold rounded-xl border transition-colors ${
                         timeCommitment === hours.toString()
                           ? 'bg-teal-600 text-white border-teal-600'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                       }`}
                     >
                       {hours}h / wk

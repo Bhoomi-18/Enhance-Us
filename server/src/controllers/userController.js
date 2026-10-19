@@ -1,6 +1,7 @@
 import User from '../models/userModel.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
+import { HTTP_STATUS } from '../constants/index.js';
 
 export const updateProfile = async (req, res, next) => {
   try {
@@ -87,3 +88,30 @@ export const completeOnboarding = async (req, res, next) => {
     next(error);
   }
 };
+
+export const deleteAccount = async (req, res, next) => {
+  try {
+    const { validateAccountDeletionInput } = await import('../validators/userValidator.js');
+    const userService = await import('../services/userService.js');
+
+    validateAccountDeletionInput(req.body);
+
+    const result = await userService.deleteUserAccount(req.user._id, req.body, req.user);
+
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    });
+
+    return ApiResponse.success(
+      res,
+      'Account and all associated personal data have been permanently deleted.',
+      result,
+      HTTP_STATUS.OK
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+

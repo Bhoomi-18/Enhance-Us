@@ -148,25 +148,25 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
       {/* STAGE 1: ANALYZING SPINNER */}
       {stage === 'analyzing' && (
         <div className="py-12 px-4 text-center space-y-6">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-teal-50 text-teal-600 flex items-center justify-center relative">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center relative">
             <Cpu className="w-8 h-8 animate-pulse" />
             <Sparkles className="w-5 h-5 text-indigo-500 absolute -top-1 -right-1 animate-spin" />
           </div>
 
           <div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Analyzing Your Goal with Gemini AI</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Analyzing Your Goal with Gemini AI</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
               Our AI decomposition engine is extracting required technical competencies, sequencing prerequisites, and cross-referencing your profile...
             </p>
           </div>
 
           <div className="max-w-xs mx-auto space-y-3 text-xs text-left">
-            <div className={`p-2.5 rounded-xl flex items-center gap-2 transition-colors ${analysisStep >= 1 ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-slate-400'}`}>
-              <CheckCircle2 className="w-4 h-4 text-teal-600" />
+            <div className={`p-2.5 rounded-xl flex items-center gap-2 transition-colors ${analysisStep >= 1 ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-semibold' : 'text-slate-400 dark:text-slate-600'}`}>
+              <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
               <span>1. Gemini AI Skill Decomposition & Roadmap...</span>
             </div>
-            <div className={`p-2.5 rounded-xl flex items-center gap-2 transition-colors ${analysisStep >= 2 ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-400'}`}>
-              <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+            <div className={`p-2.5 rounded-xl flex items-center gap-2 transition-colors ${analysisStep >= 2 ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold' : 'text-slate-400 dark:text-slate-600'}`}>
+              <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <span>2. Calculating Deterministic Skill Gaps...</span>
             </div>
           </div>
@@ -177,41 +177,41 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
       {stage === 'review' && previewData && (
         <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
           {error && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 font-medium flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {/* AI Decomposition Header */}
-          <div className="p-4 bg-gradient-to-r from-teal-50 to-indigo-50 border border-teal-200/80 rounded-2xl">
+          <div className="p-4 bg-gradient-to-r from-teal-50 to-indigo-50 dark:from-teal-950/40 dark:to-indigo-950/40 border border-teal-200/80 dark:border-teal-800/60 rounded-2xl">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Badge variant={previewData.aiAnalysis?.generatedBy === 'gemini' ? 'teal' : 'indigo'} icon={Sparkles}>
                   {previewData.aiAnalysis?.generatedBy === 'gemini' ? 'Gemini AI Decomposed' : 'Taxonomy Analysis'}
                 </Badge>
-                <span className="text-xs font-bold text-slate-700">{title}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{title}</span>
               </div>
               <Badge variant="emerald">{previewData.progress}% Coverage</Badge>
             </div>
-            <p className="text-xs text-slate-700 leading-relaxed italic">
+            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed italic">
               "{previewData.aiAnalysis?.goalInterpretation || description}"
             </p>
           </div>
 
           {/* Skill Gap Stats Bar */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Required Skills</span>
-              <span className="text-lg font-black text-slate-900">{previewData.requiredSkills?.length || 0}</span>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-center">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Required Skills</span>
+              <span className="text-lg font-black text-slate-900 dark:text-slate-100">{previewData.requiredSkills?.length || 0}</span>
             </div>
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-center">
-              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">You Already Have</span>
-              <span className="text-lg font-black text-emerald-700">{previewData.skillGaps?.knownSkills?.length || 0}</span>
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-center">
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider block">You Already Have</span>
+              <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">{previewData.skillGaps?.knownSkills?.length || 0}</span>
             </div>
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-center">
-              <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">Gaps to Learn</span>
-              <span className="text-lg font-black text-rose-700">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-center">
+              <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider block">Gaps to Learn</span>
+              <span className="text-lg font-black text-rose-700 dark:text-rose-300">
                 {(previewData.skillGaps?.missingSkills?.length || 0) + (previewData.skillGaps?.partiallyKnownSkills?.length || 0)}
               </span>
             </div>
@@ -220,11 +220,11 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
           {/* AI Recommended Skills Roadmap */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-teal-600" />
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                 Recommended Skill Learning Order
               </h4>
-              <span className="text-[11px] text-slate-400">Sequenced by prerequisites</span>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500">Sequenced by prerequisites</span>
             </div>
 
             <div className="space-y-2.5">
@@ -235,24 +235,24 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
                 return (
                   <div
                     key={idx}
-                    className="p-3 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-subtle"
+                    className="p-3 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-subtle"
                   >
                     <div className="flex items-start gap-2.5">
-                      <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                         #{sk.learningOrder || idx + 1}
                       </span>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-xs">{sk.name}</span>
+                          <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">{sk.name}</span>
                           <Badge variant={isKnown ? 'emerald' : 'slate'} className="text-[9px] py-0 px-1.5">
                             {isKnown ? '✓ In Profile' : 'Gap to Learn'}
                           </Badge>
                         </div>
                         {sk.explanation && (
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{sk.explanation}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{sk.explanation}</p>
                         )}
                         {sk.prerequisites && sk.prerequisites.length > 0 && (
-                          <p className="text-[10px] text-indigo-600 mt-0.5">
+                          <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5">
                             Prerequisites: {sk.prerequisites.join(', ')}
                           </p>
                         )}
@@ -270,19 +270,19 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
 
           {/* Effort & Milestones Summary */}
           {previewData.aiAnalysis?.estimatedEffort && (
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-700 font-medium">
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-700 dark:text-slate-300 font-medium">
                 <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-teal-600" />
+                  <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                   Effort: <strong>{previewData.aiAnalysis.estimatedEffort.estimatedHours || '40-60 hours'}</strong>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   Timeline: <strong>{previewData.aiAnalysis.estimatedEffort.timelineRecommendation || '4-8 weeks'}</strong>
                 </span>
               </div>
               {previewData.aiAnalysis.estimatedEffort.uncertaintyDisclaimer && (
-                <p className="text-[10px] text-slate-400 italic">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">
                   Note: {previewData.aiAnalysis.estimatedEffort.uncertaintyDisclaimer}
                 </p>
               )}
@@ -290,7 +290,7 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
           )}
 
           {/* Review Actions */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <Button
               type="button"
               variant="outline"
@@ -331,18 +331,18 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
       {stage === 'input' && (
         <form onSubmit={handleStartAnalysis} className="space-y-6">
           {error && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-start gap-2">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 font-medium flex items-start gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold">Analysis Error</p>
-                <p className="text-rose-600">{error}</p>
+                <p className="text-rose-600 dark:text-rose-400">{error}</p>
               </div>
             </div>
           )}
 
           {/* Inspiration Quick Selection */}
           <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
               Inspiration Examples (Click to populate)
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -351,10 +351,10 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
                   key={idx}
                   type="button"
                   onClick={() => handleSelectInspiration(item)}
-                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left hover:border-teal-500 hover:bg-teal-50/50 transition-colors text-xs"
+                  className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left hover:border-teal-500 dark:hover:border-teal-500 hover:bg-teal-50/50 dark:hover:bg-teal-950/30 transition-colors text-xs"
                 >
-                  <p className="font-bold text-slate-800 flex items-center gap-1.5">
-                    <Target className="w-3.5 h-3.5 text-teal-600" /> {item.title}
+                  <p className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" /> {item.title}
                   </p>
                 </button>
               ))}
@@ -376,10 +376,10 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
 
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Describe What You Want To Accomplish *
                 </label>
-                <span className={`text-[11px] font-medium ${description.length > 2000 ? 'text-rose-600' : 'text-slate-400'}`}>
+                <span className={`text-[11px] font-medium ${description.length > 2000 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'}`}>
                   {description.length}/2000
                 </span>
               </div>
@@ -391,16 +391,16 @@ export const GoalCreateModal = ({ isOpen, onClose, onGoalCreated }) => {
                   setDescription(e.target.value);
                   if (error) setError(null);
                 }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                 required
               />
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-400 dark:text-slate-500">
                 Minimum 10 characters. EnhanceUs will use Gemini AI to decompose your goal into actionable learning skills and prerequisites.
               </span>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <Button type="button" variant="ghost" size="sm" onClick={onClose}>
               Cancel
             </Button>
