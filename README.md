@@ -82,8 +82,66 @@ EnhanceUs integrates Google's official `@google/genai` SDK on the backend to dec
 | `GET` | `/api/roadmaps` | List all saved roadmaps for authenticated user | Yes (JWT/Cookie) | No |
 | `GET` | `/api/roadmaps/:id` | Fetch single roadmap with goal details (isolated) | Yes (JWT/Cookie) | No |
 | `DELETE`| `/api/roadmaps/:id` | Delete owned roadmap | Yes (JWT/Cookie) | No |
+| `POST` | `/api/roadmaps/:id/analyze-dependencies` | Analyze skill prerequisites & calculate topological learning order (V2.2) | Yes (JWT/Cookie) | Yes (`aiRateLimiter`) |
+| `POST` | `/api/roadmaps/:id/prerequisites` | Alias for on-demand dependency analysis | Yes (JWT/Cookie) | Yes (`aiRateLimiter`) |
 
 ---
+
+## 🧠 EnhanceUs V2.2 — Prerequisite-Aware Learning Order & Dependency Engine
+
+EnhanceUs V2.2 transforms the learning roadmap from a static list of competencies into an **intelligent, prerequisite-aware execution plan**. It discovers technical dependencies between skills, personalizes the plan against the user's verified background, and deterministically computes an optimal learning order.
+
+### Core Features & Architecture
+
+1. **Intelligent Prerequisite Detection**:
+   - Analyzes roadmap competencies and stage hierarchies using Google Gemini AI to identify natural pedagogical and technical dependencies.
+   - Categorizes prerequisite relationships into:
+     - `REQUIRED`: Essential foundational skill that must be mastered before dependent skills can be learned effectively.
+     - `RECOMMENDED`: Foundational context that accelerates mastery but is non-blocking.
+     - `OPTIONAL_RELATED`: Tangential conceptual links.
+   - Built-in deterministic fallback engine automatically triggers if Gemini is unavailable, rate-limited, or times out.
+
+2. **Deterministic Graph Validation & Cycle Elimination**:
+   - **Canonical Normalization**: Standardizes skill names against the authenticated roadmap document.
+   - **Self-Dependency Removal**: Rejects self-referential edges (`fromSkill === toSkill`).
+   - **External Skill Rejection**: Silently discards edges referencing competencies outside the current roadmap.
+   - **Duplicate Edge Resolution**: Collapses duplicate edges and preserves the strictest dependency type (`REQUIRED` > `RECOMMENDED` > `OPTIONAL_RELATED`).
+   - **DFS Cycle Detection**: Implements 3-state graph coloring (`0=unvisited`, `1=visiting`, `2=visited`) to identify directed circular dependencies (e.g. `A -> B -> C -> A`). Safely prunes cycle-forming edges before computing order.
+
+3. **Deterministic Topological Sorting (Kahn's Algorithm)**:
+   - Computes in-degrees for all required prerequisite dependencies.
+   - Evaluates skills wave-by-wave with multi-attribute deterministic tie-breaking:
+     1. Possessed skills (verified in user profile) scheduled first.
+     2. Priority weight (`high` > `medium` > `low`).
+     3. Canonical alphabetical ordering for 100% reproducibility.
+   - Identifies parallel learning waves (skills with no mutual blocking dependencies).
+
+4. **Profile-Aware Personalization**:
+   - Compares required prerequisites with the authenticated user's actual profile skills.
+   - Classifies each roadmap step into clear pedagogical states:
+     - `READY`: All required foundational prerequisites are satisfied. Ready for active practice today.
+     - `BLOCKED`: One or more required prerequisites are incomplete. The step explicitly enumerates unmet dependencies.
+     - `SATISFIED`: Skill is already mastered based on verified profile competencies. Does not count as an unfinished task.
+   - Highlights **Parallel Opportunities**: identifies groups of skills that can be studied concurrently.
+
+5. **Backward Compatibility & On-Demand Upgrades**:
+   - Existing V2.1 roadmaps retain their original data (`roadmapSchemaVersion: "2.1"`, `dependencyAnalysisStatus: "NOT_ANALYZED"`).
+   - Detail view provides a single-click upgrade action: **"Analyze Skill Prerequisites & Learning Order"**.
+   - Upon execution, roadmaps upgrade smoothly to version `2.2` and persist validated dependency edges and sequence indices.
+   - **Recalculate Learning Order**: Allows on-demand re-sorting when a user acquires new skills or updates their profile.
+
+### V2.2 Test Suite Execution
+- **Unit Tests**: `npm run test:engine` (13 isolated unit tests for Kahn's algorithm, cycle detection, edge deduplication, parallel waves, profile personalization, and deterministic reproducibility).
+- **Integration Tests**: `npm run test:prereq` (24 full-stack integration tests for authentication, multi-tenant isolation, on-demand analysis, topological ordering, and MongoDB persistence).
+- **Full Platform Suite**: `npm run test:all` (All platform unit, security, roadmap, session, review, and dependency test suites).
+
+### Environment Configuration
+- Reuses existing `GEMINI_API_KEY` and optional `GEMINI_MODEL` (e.g., `gemini-1.5-flash`).
+- **No new environment variables are required.**
+
+### Known Limitations
+- Gemini proposes plausible prerequisite relationships based on technical domain context, but dependencies are advisory. The system combines AI suggestions with strict deterministic validation. Users are encouraged to inspect dependency rationales and schedule peer exchange sessions on EnhanceUs for personalized guidance.
+
 
 ## 🛠️ Technology Stack
 

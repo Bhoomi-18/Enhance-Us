@@ -13,7 +13,9 @@
     "test:account": "node src/tests/accountDeletion.test.js",
     "test:feedback": "node src/tests/feedbackIntegration.test.js",
     "test:session": "node src/tests/sessionAndReviewIntegration.test.js",
-    "test:all": "node src/tests/securityAndIsolation.test.js && node src/tests/geminiIntegration.test.js && node src/tests/roadmapIntegration.test.js && node src/tests/accountDeletion.test.js && node src/tests/feedbackIntegration.test.js && node src/tests/sessionAndReviewIntegration.test.js"
+    "test:engine": "node src/tests/dependencyEngine.test.js",
+    "test:prereq": "node src/tests/roadmapPrerequisiteIntegration.test.js",
+    "test:all": "node src/tests/securityAndIsolation.test.js && node src/tests/geminiIntegration.test.js && node src/tests/roadmapIntegration.test.js && node src/tests/dependencyEngine.test.js && node src/tests/roadmapPrerequisiteIntegration.test.js && node src/tests/accountDeletion.test.js && node src/tests/feedbackIntegration.test.js && node src/tests/sessionAndReviewIntegration.test.js"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",

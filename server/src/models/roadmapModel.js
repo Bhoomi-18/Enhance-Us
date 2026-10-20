@@ -86,6 +86,54 @@ const roadmapStageSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const dependencyEdgeSchema = new mongoose.Schema(
+  {
+    fromSkill: { type: String, required: true, trim: true },
+    toSkill: { type: String, required: true, trim: true },
+    type: {
+      type: String,
+      enum: ['REQUIRED', 'RECOMMENDED', 'OPTIONAL_RELATED'],
+      default: 'REQUIRED',
+    },
+    reason: { type: String, trim: true, default: '' },
+  },
+  { _id: false }
+);
+
+const learningOrderStepSchema = new mongoose.Schema(
+  {
+    skillName: { type: String, required: true, trim: true },
+    orderIndex: { type: Number, required: true },
+    status: {
+      type: String,
+      enum: ['READY', 'BLOCKED', 'SATISFIED', 'IN_PROGRESS', 'UNKNOWN'],
+      default: 'READY',
+    },
+    requiredPrerequisites: [{ type: String, trim: true }],
+    recommendedPrerequisites: [{ type: String, trim: true }],
+    satisfiedPrerequisites: [{ type: String, trim: true }],
+    unmetPrerequisites: [{ type: String, trim: true }],
+    canLearnInParallelWith: [{ type: String, trim: true }],
+    explanation: { type: String, trim: true, default: '' },
+  },
+  { _id: false }
+);
+
+const prerequisiteAnalysisSchema = new mongoose.Schema(
+  {
+    totalDependencies: { type: Number, default: 0 },
+    requiredDependenciesCount: { type: Number, default: 0 },
+    recommendedDependenciesCount: { type: Number, default: 0 },
+    readySkillsCount: { type: Number, default: 0 },
+    blockedSkillsCount: { type: Number, default: 0 },
+    satisfiedSkillsCount: { type: Number, default: 0 },
+    parallelOpportunityGroups: { type: [[String]], default: [] },
+    generatedBy: { type: String, default: 'gemini' },
+    analyzedAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const roadmapSchema = new mongoose.Schema(
   {
     user: {
@@ -147,6 +195,28 @@ const roadmapSchema = new mongoose.Schema(
       type: String,
       enum: ['ACTIVE', 'ARCHIVED'],
       default: 'ACTIVE',
+      index: true,
+    },
+    roadmapSchemaVersion: {
+      type: String,
+      default: '2.1',
+    },
+    dependencyEdges: {
+      type: [dependencyEdgeSchema],
+      default: [],
+    },
+    learningOrder: {
+      type: [learningOrderStepSchema],
+      default: [],
+    },
+    prerequisiteAnalysis: {
+      type: prerequisiteAnalysisSchema,
+      default: () => ({}),
+    },
+    dependencyAnalysisStatus: {
+      type: String,
+      enum: ['NOT_ANALYZED', 'COMPLETED', 'FAILED'],
+      default: 'NOT_ANALYZED',
       index: true,
     },
     metadata: {

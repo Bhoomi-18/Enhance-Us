@@ -31,9 +31,20 @@ export const deleteRoadmap = async (id) => {
   return await apiClient.delete(`/roadmaps/${id}`);
 };
 
+/**
+ * Analyze or recalculate skill prerequisites and deterministic learning order (V2.2)
+ */
+export const analyzeRoadmapDependencies = async (id, options = {}) => {
+  return await apiClient.post(`/roadmaps/${id}/analyze-dependencies`, options, {
+    timeout: 30000,
+  });
+};
+
 export default {
   getRoadmaps,
   getRoadmap,
   generateRoadmap,
   deleteRoadmap,
+  analyzeRoadmapDependencies,
 };
+

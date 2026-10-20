@@ -1,6 +1,13 @@
 import { GoogleGenAI } from '@google/genai';
 import crypto from 'crypto';
 import { ApiError } from '../utils/apiError.js';
+import {
+  validateAndCleanEdges,
+  detectCycle,
+  topologicalSort,
+  buildPersonalizedLearningOrder,
+  generateDeterministicPrerequisites,
+} from './dependencyEngine.js';
 
 // Cache for recent roadmap generations to prevent duplicate AI invocations
 const roadmapCache = new Map();
@@ -568,6 +575,214 @@ ${JSON.stringify(formattedProfileSkills, null, 2)}
       skills,
       stages,
     };
+  }
+
+  /**
+   * Analyze skill dependencies and calculate personalized prerequisite learning order
+   */
+  async analyzeDependencies({ goal, skills = [], stages = [], userSkills = [], forceRecalculate = false }) {
+    if (!Array.isArray(skills) || skills.length === 0) {
+      throw new ApiError(400, 'Roadmap skills are required for prerequisite analysis');
+    }
+
+    const currentApiKey = process.env.GEMINI_API_KEY;
+    const currentModel = process.env.GEMINI_MODEL || this.modelName;
+
+    // Cache key based on skills and goal
+    const skillNamesHash = skills.map((s) => (s?.name || '').trim().toLowerCase()).sort().join('|');
+    const userSkillsHash = (userSkills || [])
+      .map((s) => `${(s?.name || '').trim().toLowerCase()}:${s?.level || ''}`)
+      .sort()
+      .join('|');
+    const cachePayload = `dep:${skillNamesHash}::${userSkillsHash}::${(goal?.title || '').trim().toLowerCase()}`;
+    const cacheKey = crypto.createHash('sha256').update(cachePayload).digest('hex');
+
+    if (!forceRecalculate) {
+      const cached = roadmapCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return JSON.parse(JSON.stringify(cached.data));
+      }
+    }
+
+    let rawDependencies = [];
+    let generatedBy = 'gemini';
+
+    if (currentApiKey && currentApiKey.trim()) {
+      const systemInstruction = `You are the Skill Dependency & Prerequisite Analysis Engine for EnhanceUs.
+Your task is to analyze the skills in a learning roadmap and detect technically and pedagogically sound prerequisite relationships.
+
+CRITICAL RULES:
+1. ONLY propose dependencies between skills listed in the user's roadmap. Do not introduce new skill names.
+2. A dependency means: "fromSkill" must normally be learned or understood before learning "toSkill".
+3. Dependency types:
+   - "REQUIRED": "fromSkill" is an essential foundational prerequisite for "toSkill".
+   - "RECOMMENDED": "fromSkill" makes "toSkill" significantly easier or provides valuable context, but is not strictly blocking.
+   - "OPTIONAL_RELATED": "fromSkill" is tangentially helpful or related, but not a true dependency.
+4. DO NOT make every earlier skill a prerequisite of later skills. Only create an edge if there is a genuine pedagogical or technical dependency.
+5. NEVER create self-dependencies (fromSkill === toSkill).
+6. NEVER create cyclic dependencies (e.g. A depends on B and B depends on A).
+7. Provide a concise, professional "reason" explaining why the prerequisite exists.
+8. Respond with ONLY a valid JSON object matching this schema:
+{
+  "dependencies": [
+    {
+      "fromSkill": "Exact Name of Foundational Skill",
+      "toSkill": "Exact Name of Dependent Skill",
+      "type": "REQUIRED" | "RECOMMENDED" | "OPTIONAL_RELATED",
+      "reason": "Clear explanation of pedagogical dependency."
+    }
+  ]
+}`;
+
+      const skillsSummary = skills.map((s) => ({
+        name: s.name,
+        description: s.description,
+        currentLevel: s.currentLevel,
+        targetLevel: s.targetLevel,
+        priority: s.priority,
+        isPossessed: Boolean(s.isPossessed),
+      }));
+
+      const userPromptContent = `<goal>
+Title: ${sanitizeText(goal?.title || 'Learning Goal', 200)}
+Description: ${sanitizeText(goal?.description || '', 1000)}
+</goal>
+
+<roadmap_skills>
+${JSON.stringify(skillsSummary, null, 2)}
+</roadmap_skills>
+
+<stages>
+${JSON.stringify(stages || [], null, 2)}
+</stages>
+
+Identify the natural prerequisite dependencies among these exact skills. Return JSON.`;
+
+      try {
+        const ai = new GoogleGenAI({ apiKey: currentApiKey.trim() });
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new ApiError(504, 'Gemini dependency analysis timed out after 15 seconds.'));
+          }, 15000);
+        });
+
+        const candidateModels = ['gemini-3.8-flash', currentModel, 'gemini-2.5-flash', 'gemini-1.5-flash'].filter((v, i, a) => a.indexOf(v) === i);
+        let rawText = '';
+        let lastErr = null;
+
+        for (const m of candidateModels) {
+          try {
+            const res = await Promise.race([
+              ai.models.generateContent({
+                model: m,
+                contents: userPromptContent,
+                config: {
+                  systemInstruction,
+                  responseMimeType: 'application/json',
+                  temperature: 0.1,
+                  maxOutputTokens: 2000,
+                },
+              }),
+              timeoutPromise,
+            ]);
+            if (res?.text) {
+              rawText = res.text;
+              break;
+            }
+          } catch (mErr) {
+            lastErr = mErr;
+            const msg = mErr.message || '';
+            if (msg.includes('not found') || msg.includes('NOT_FOUND') || msg.includes('no longer available')) {
+              continue;
+            }
+            throw mErr;
+          }
+        }
+
+        if (rawText) {
+          let cleanJson = rawText.trim();
+          if (cleanJson.startsWith('```json')) {
+            cleanJson = cleanJson.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+          } else if (cleanJson.startsWith('```')) {
+            cleanJson = cleanJson.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          }
+          const parsed = JSON.parse(cleanJson);
+          if (Array.isArray(parsed.dependencies)) {
+            rawDependencies = parsed.dependencies;
+          }
+        }
+      } catch (aiErr) {
+        console.warn('[Gemini Roadmap] AI dependency analysis failed or offline, using deterministic fallback:', aiErr.message || aiErr);
+        rawDependencies = generateDeterministicPrerequisites(skills, stages);
+        generatedBy = 'deterministic-fallback';
+      }
+    } else {
+      // Deterministic fallback when Gemini API key is not present
+      rawDependencies = generateDeterministicPrerequisites(skills, stages);
+      generatedBy = 'deterministic-fallback';
+    }
+
+    // Clean & normalize edges against roadmap skills
+    let { cleanedEdges } = validateAndCleanEdges(skills, rawDependencies);
+
+    // Detect and resolve cycles safely
+    let cycle = detectCycle(skills, cleanedEdges);
+    if (cycle && cycle.hasCycle && Array.isArray(cycle.cyclePath)) {
+      console.warn(`[Gemini Roadmap] Cycle detected in dependencies (${cycle.cyclePath.join(' -> ')}). Resolving by pruning cycle edge.`);
+      const cycleTail = cycle.cyclePath[cycle.cyclePath.length - 2];
+      const cycleHead = cycle.cyclePath[cycle.cyclePath.length - 1];
+      cleanedEdges = cleanedEdges.filter(
+        (e) => !(e.fromSkill.toLowerCase() === cycleTail.toLowerCase() && e.toSkill.toLowerCase() === cycleHead.toLowerCase())
+      );
+      const secondCheck = detectCycle(skills, cleanedEdges);
+      if (secondCheck && secondCheck.hasCycle) {
+        cleanedEdges = validateAndCleanEdges(skills, generateDeterministicPrerequisites(skills, stages)).cleanedEdges;
+        generatedBy = 'deterministic-fallback';
+      }
+    }
+
+    // Topological sort with deterministic tie-breaking
+    const { sortedNames, parallelWaves } = topologicalSort(skills, cleanedEdges);
+
+    // Personalize with user profile skills
+    const { learningOrder, parallelOpportunityGroups } = buildPersonalizedLearningOrder(
+      skills,
+      cleanedEdges,
+      sortedNames,
+      parallelWaves,
+      userSkills
+    );
+
+    const requiredDepsCount = cleanedEdges.filter((e) => e.type === 'REQUIRED').length;
+    const recommendedDepsCount = cleanedEdges.filter((e) => e.type === 'RECOMMENDED').length;
+    const readySkillsCount = learningOrder.filter((s) => s.status === 'READY').length;
+    const blockedSkillsCount = learningOrder.filter((s) => s.status === 'BLOCKED').length;
+    const satisfiedSkillsCount = learningOrder.filter((s) => s.status === 'SATISFIED').length;
+
+    const result = {
+      dependencyEdges: cleanedEdges,
+      learningOrder,
+      prerequisiteAnalysis: {
+        totalDependencies: cleanedEdges.length,
+        requiredDependenciesCount: requiredDepsCount,
+        recommendedDependenciesCount: recommendedDepsCount,
+        readySkillsCount,
+        blockedSkillsCount,
+        satisfiedSkillsCount,
+        parallelOpportunityGroups,
+        generatedBy,
+        analyzedAt: new Date(),
+      },
+      dependencyAnalysisStatus: 'COMPLETED',
+      roadmapSchemaVersion: '2.2',
+    };
+
+    roadmapCache.set(cacheKey, {
+      data: result,
+      timestamp: Date.now(),
+    });
+
+    return result;
   }
 }
 

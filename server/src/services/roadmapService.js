@@ -104,11 +104,28 @@ export const generateRoadmap = async (userId, goalId, options = {}) => {
       };
     }
 
+    let depAnalysis = null;
+    try {
+      depAnalysis = await geminiRoadmapService.analyzeDependencies({
+        goal: { title: goal.title, description: goal.description },
+        skills: generated.skills,
+        stages: generated.stages,
+        userSkills: mockUserSkills,
+      });
+    } catch (depErr) {
+      console.warn('[Roadmap] Pre-analysis in mock mode failed:', depErr.message);
+    }
+
     const mockRoadmap = {
       _id: 'mock_roadmap_' + Date.now(),
       user: userId.toString(),
       goal,
       ...generated,
+      roadmapSchemaVersion: depAnalysis ? '2.2' : '2.1',
+      dependencyEdges: depAnalysis?.dependencyEdges || [],
+      learningOrder: depAnalysis?.learningOrder || [],
+      prerequisiteAnalysis: depAnalysis?.prerequisiteAnalysis || {},
+      dependencyAnalysisStatus: depAnalysis ? 'COMPLETED' : 'NOT_ANALYZED',
       status: 'ACTIVE',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -151,6 +168,21 @@ export const generateRoadmap = async (userId, goalId, options = {}) => {
     options,
   });
 
+  let depAnalysis = null;
+  try {
+    depAnalysis = await geminiRoadmapService.analyzeDependencies({
+      goal: {
+        title: goal.title,
+        description: goal.description,
+      },
+      skills: generatedRoadmap.skills,
+      stages: generatedRoadmap.stages,
+      userSkills,
+    });
+  } catch (depErr) {
+    console.warn('[Roadmap] Pre-analysis during roadmap generation failed:', depErr.message);
+  }
+
   // 5. Persist to MongoDB with owner reference
   const roadmap = await Roadmap.create({
     user: userId,
@@ -162,6 +194,11 @@ export const generateRoadmap = async (userId, goalId, options = {}) => {
     skills: generatedRoadmap.skills,
     stages: generatedRoadmap.stages,
     metadata: generatedRoadmap.metadata,
+    roadmapSchemaVersion: depAnalysis ? '2.2' : '2.1',
+    dependencyEdges: depAnalysis?.dependencyEdges || [],
+    learningOrder: depAnalysis?.learningOrder || [],
+    prerequisiteAnalysis: depAnalysis?.prerequisiteAnalysis || {},
+    dependencyAnalysisStatus: depAnalysis ? 'COMPLETED' : 'NOT_ANALYZED',
     status: 'ACTIVE',
   });
 
@@ -255,9 +292,88 @@ export const deleteRoadmap = async (roadmapId, userId) => {
   return true;
 };
 
+/**
+ * Perform on-demand prerequisite analysis and calculate learning order for an existing roadmap
+ */
+export const analyzeRoadmapDependencies = async (roadmapId, userId, options = {}) => {
+  // Handle Mock DB Mode
+  if (process.env.MOCK_DB === 'true') {
+    const roadmap = mockRoadmapsStore.find(
+      (r) => r._id === roadmapId && r.user === userId.toString()
+    );
+    if (!roadmap) {
+      throw new ApiError(404, 'Roadmap not found');
+    }
+
+    const mockUserSkills = [
+      { name: 'JavaScript', category: 'Programming Languages', level: 'intermediate' },
+      { name: 'React', category: 'Frontend', level: 'intermediate' },
+    ];
+
+    const analysis = await geminiRoadmapService.analyzeDependencies({
+      goal: roadmap.goal || { title: roadmap.title },
+      skills: roadmap.skills,
+      stages: roadmap.stages,
+      userSkills: mockUserSkills,
+      forceRecalculate: Boolean(options.forceRecalculate),
+    });
+
+    roadmap.dependencyEdges = analysis.dependencyEdges;
+    roadmap.learningOrder = analysis.learningOrder;
+    roadmap.prerequisiteAnalysis = analysis.prerequisiteAnalysis;
+    roadmap.dependencyAnalysisStatus = 'COMPLETED';
+    roadmap.roadmapSchemaVersion = '2.2';
+    roadmap.updatedAt = new Date().toISOString();
+
+    return roadmap;
+  }
+
+  // MongoDB Mode
+  if (!mongoose.Types.ObjectId.isValid(roadmapId)) {
+    throw new ApiError(400, 'Invalid roadmap identifier format');
+  }
+
+  const roadmap = await Roadmap.findOne({ _id: roadmapId, user: userId }).populate(
+    'goal',
+    'title description status progress'
+  );
+
+  if (!roadmap) {
+    throw new ApiError(404, 'Roadmap not found');
+  }
+
+  const user = await User.findById(userId).select('skills');
+  const userSkills = (user?.skills || []).map((s) => ({
+    name: s.name,
+    category: s.category || 'General',
+    level: s.level ? s.level.toLowerCase() : 'intermediate',
+  }));
+
+  const analysis = await geminiRoadmapService.analyzeDependencies({
+    goal: {
+      title: roadmap.goal?.title || roadmap.title,
+      description: roadmap.goal?.description || roadmap.goalSummary,
+    },
+    skills: roadmap.skills,
+    stages: roadmap.stages,
+    userSkills,
+    forceRecalculate: Boolean(options.forceRecalculate),
+  });
+
+  roadmap.dependencyEdges = analysis.dependencyEdges;
+  roadmap.learningOrder = analysis.learningOrder;
+  roadmap.prerequisiteAnalysis = analysis.prerequisiteAnalysis;
+  roadmap.dependencyAnalysisStatus = 'COMPLETED';
+  roadmap.roadmapSchemaVersion = '2.2';
+
+  await roadmap.save();
+  return roadmap;
+};
+
 export default {
   generateRoadmap,
   getUserRoadmaps,
   getRoadmapById,
   deleteRoadmap,
+  analyzeRoadmapDependencies,
 };

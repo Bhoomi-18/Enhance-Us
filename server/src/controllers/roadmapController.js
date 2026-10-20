@@ -46,3 +46,21 @@ export const deleteRoadmap = async (req, res, next) => {
     next(error);
   }
 };
+
+export const analyzeRoadmapDependencies = async (req, res, next) => {
+  try {
+    const roadmap = await roadmapService.analyzeRoadmapDependencies(
+      req.params.id,
+      req.user._id,
+      req.body || {}
+    );
+    return ApiResponse.success(
+      res,
+      'Roadmap dependencies and learning order analyzed successfully',
+      { roadmap }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
