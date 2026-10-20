@@ -40,11 +40,46 @@ export const analyzeRoadmapDependencies = async (id, options = {}) => {
   });
 };
 
+/**
+ * Update milestone status (START, COMPLETE, REOPEN, BLOCK, UPDATE_NOTES) (V2.3)
+ */
+export const updateMilestone = async (roadmapId, milestoneId, payload = {}) => {
+  return await apiClient.patch(`/roadmaps/${roadmapId}/milestones/${milestoneId}`, payload);
+};
+
+/**
+ * Propose adaptive breakdown of a complex milestone (V2.3)
+ */
+export const proposeMilestoneBreakdown = async (roadmapId, milestoneId, payload = {}) => {
+  return await apiClient.post(`/roadmaps/${roadmapId}/milestones/${milestoneId}/propose-breakdown`, payload, {
+    timeout: 20000,
+  });
+};
+
+/**
+ * Apply adaptive breakdown: replace target milestone with sub-milestones (V2.3)
+ */
+export const applyMilestoneBreakdown = async (roadmapId, milestoneId, payload = {}) => {
+  return await apiClient.post(`/roadmaps/${roadmapId}/milestones/${milestoneId}/apply-breakdown`, payload);
+};
+
+/**
+ * Explicitly initialize milestones for an existing roadmap (V2.3)
+ */
+export const initializeMilestones = async (roadmapId) => {
+  return await apiClient.post(`/roadmaps/${roadmapId}/milestones/initialize`);
+};
+
 export default {
   getRoadmaps,
   getRoadmap,
   generateRoadmap,
   deleteRoadmap,
   analyzeRoadmapDependencies,
+  updateMilestone,
+  proposeMilestoneBreakdown,
+  applyMilestoneBreakdown,
+  initializeMilestones,
 };
+
 

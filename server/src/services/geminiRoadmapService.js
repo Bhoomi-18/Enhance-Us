@@ -352,8 +352,10 @@ ${JSON.stringify(formattedProfileSkills, null, 2)}
             currentLevel = profileLvl;
           }
         }
-      } else if (currentLevel !== 'unknown') {
+      } else if (sk.isPossessed === true && (currentLevel === 'intermediate' || currentLevel === 'advanced')) {
         isPossessed = true;
+      } else {
+        isPossessed = false;
       }
 
       validatedSkills.push({

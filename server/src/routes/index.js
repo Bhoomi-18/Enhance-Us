@@ -13,6 +13,8 @@ import searchRoutes from './searchRoutes.js';
 import userRoutes from './userRoutes.js';
 import roadmapRoutes from './roadmapRoutes.js';
 import feedbackRoutes from './feedbackRoutes.js';
+import resourceRoutes from './resourceRoutes.js';
+import assistantRoutes from './assistantRoutes.js';
 
 const router = Router();
 
@@ -23,6 +25,8 @@ router.use('/users', userRoutes);
 router.use('/skills', skillRoutes);
 router.use('/goals', goalRoutes);
 router.use('/roadmaps', roadmapRoutes);
+router.use('/resources', resourceRoutes);
+router.use('/assistant', assistantRoutes);
 router.use('/matches', matchRoutes);
 router.use('/exchanges', exchangeRoutes);
 router.use('/conversations', conversationRoutes);

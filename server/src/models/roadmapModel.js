@@ -134,6 +134,126 @@ const prerequisiteAnalysisSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const milestoneSchema = new mongoose.Schema(
+  {
+    milestoneId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    title: {
+      type: String,
+      required: [true, 'Milestone title is required'],
+      trim: true,
+      maxlength: [200, 'Title cannot exceed 200 characters'],
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [1000, 'Description cannot exceed 1000 characters'],
+    },
+    skillName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    stageNumber: {
+      type: Number,
+      default: 1,
+    },
+    orderIndex: {
+      type: Number,
+      required: true,
+      default: 1,
+    },
+    completionCriteria: [
+      {
+        type: String,
+        trim: true,
+        maxlength: [300, 'Completion criterion cannot exceed 300 characters'],
+      },
+    ],
+    requiredPrerequisites: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    recommendedPrerequisites: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    status: {
+      type: String,
+      enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED'],
+      default: 'NOT_STARTED',
+      index: true,
+    },
+    priority: {
+      type: String,
+      enum: ['high', 'medium', 'low'],
+      default: 'medium',
+    },
+    learnerNotes: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [2000, 'Notes cannot exceed 2000 characters'],
+    },
+    blockedReason: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [500, 'Blocked reason cannot exceed 500 characters'],
+    },
+    startedAt: {
+      type: Date,
+      default: null,
+    },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
+    isAdaptiveAddition: {
+      type: Boolean,
+      default: false,
+    },
+    originalMilestoneId: {
+      type: String,
+      default: null,
+    },
+  },
+  { _id: false, timestamps: true }
+);
+
+const roadmapProgressSchema = new mongoose.Schema(
+  {
+    totalMilestones: { type: Number, default: 0 },
+    completedMilestones: { type: Number, default: 0 },
+    inProgressMilestones: { type: Number, default: 0 },
+    blockedMilestones: { type: Number, default: 0 },
+    notStartedMilestones: { type: Number, default: 0 },
+    completionPercentage: { type: Number, default: 0 },
+    skillProgress: [
+      {
+        skillName: { type: String, required: true },
+        totalMilestones: { type: Number, default: 0 },
+        completedMilestones: { type: Number, default: 0 },
+        completionPercentage: { type: Number, default: 0 },
+      },
+    ],
+    nextRecommendedMilestoneId: { type: String, default: null },
+    nextRecommendedMilestoneTitle: { type: String, default: null },
+    nextRecommendedReason: { type: String, default: '' },
+    parallelAvailableMilestoneIds: [{ type: String, trim: true }],
+    lastActivityAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const roadmapSchema = new mongoose.Schema(
   {
     user: {
@@ -199,7 +319,7 @@ const roadmapSchema = new mongoose.Schema(
     },
     roadmapSchemaVersion: {
       type: String,
-      default: '2.1',
+      default: '2.3',
     },
     dependencyEdges: {
       type: [dependencyEdgeSchema],
@@ -219,6 +339,23 @@ const roadmapSchema = new mongoose.Schema(
       default: 'NOT_ANALYZED',
       index: true,
     },
+    milestones: {
+      type: [milestoneSchema],
+      default: [],
+    },
+    progress: {
+      type: roadmapProgressSchema,
+      default: () => ({}),
+    },
+    adaptiveAdjustmentHistory: [
+      {
+        adjustedAt: { type: Date, default: Date.now },
+        adjustmentType: { type: String, default: 'BREAKDOWN_MILESTONE' },
+        reason: { type: String, default: '' },
+        affectedMilestoneIds: [{ type: String }],
+        summary: { type: String, default: '' },
+      },
+    ],
     metadata: {
       generatedBy: { type: String, default: 'gemini' },
       generatedAt: { type: Date, default: Date.now },

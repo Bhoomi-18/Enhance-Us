@@ -110,7 +110,7 @@ async function runPrerequisiteIntegrationSuite() {
     assert(roadmapA?.skills?.length > 0, 'Roadmap contains structured skills');
     assert(roadmapA?.stages?.length > 0, 'Roadmap contains structured stages');
     assert(
-      roadmapA?.roadmapSchemaVersion === '2.2' || roadmapA?.roadmapSchemaVersion === '2.1',
+      roadmapA?.roadmapSchemaVersion === '2.3' || roadmapA?.roadmapSchemaVersion === '2.2' || roadmapA?.roadmapSchemaVersion === '2.1',
       `Roadmap schema version is valid (${roadmapA?.roadmapSchemaVersion})`
     );
 

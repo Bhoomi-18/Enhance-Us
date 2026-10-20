@@ -142,6 +142,161 @@ EnhanceUs V2.2 transforms the learning roadmap from a static list of competencie
 ### Known Limitations
 - Gemini proposes plausible prerequisite relationships based on technical domain context, but dependencies are advisory. The system combines AI suggestions with strict deterministic validation. Users are encouraged to inspect dependency rationales and schedule peer exchange sessions on EnhanceUs for personalized guidance.
 
+---
+
+## 📈 EnhanceUs V2.3 — Adaptive Learning Progress, Milestones & Roadmap Updates
+
+EnhanceUs V2.3 makes learning roadmaps fully **trackable, measurable, and dynamically adaptive**. While V2.1 introduced AI roadmap generation and V2.2 established prerequisite dependency ordering, V2.3 allows learners to record verifiable milestone progress, unblock skills dynamically as foundations are satisfied, report obstacles, and adapt future learning plans without losing completed history.
+
+### Core Features & Capabilities
+
+1. **Persistent Concrete Milestones**:
+   - Each roadmap features actionable learning milestones rather than arbitrary percentages.
+   - Types of milestones:
+     - **Skill-Level Outcome Milestones**: Concrete concepts, practical sandbox exercises, and implementations derived from skill objectives.
+     - **Stage Capstone Milestones**: Integrative deliverables and assessments demonstrating combined mastery across a stage.
+     - **Adaptive Sub-Milestones**: Structured sub-steps created when a learner breaks down a challenging or blocked milestone.
+   - Milestone fields: Stable `milestoneId`, `title`, `description`, `skillName`, `stageNumber`, `orderIndex`, `completionCriteria`, `requiredPrerequisites`, `status`, `priority`, `learnerNotes`, `blockedReason`, `startedAt`, `completedAt`, `isAdaptiveAddition`, `originalMilestoneId`.
+   - Four distinct statuses:
+     - `NOT_STARTED`: Milestone has not begun; prerequisites are satisfied.
+     - `IN_PROGRESS`: Milestone has been started; learner is actively developing competency.
+     - `COMPLETED`: Milestone meets defined completion criteria; recorded with verified timestamp.
+     - `BLOCKED`: A prerequisite dependency or self-reported obstacle prevents progress.
+
+2. **Deterministic & Backend-Validated Progress Calculation**:
+   - Progress is computed exclusively on the backend from persisted milestone records (no client-side trust).
+   - Standardized calculation rules:
+     ```
+     completion percentage = round((completed eligible milestones / total eligible milestones) × 100)
+     ```
+   - Empty roadmaps safely evaluate to 0% (zero division guarded).
+   - Metrics tracked:
+     - `totalMilestones`: Total number of milestones in roadmap.
+     - `completedCount` / `completedMilestones`: Milestones in `COMPLETED` state.
+     - `inProgressCount` / `inProgressMilestones`: Milestones in `IN_PROGRESS` state.
+     - `blockedCount` / `blockedMilestones`: Milestones in `BLOCKED` state.
+     - `remainingCount` / `notStartedMilestones`: Incomplete milestones remaining ahead.
+     - `skillProgress`: Skill-by-skill progress percentage and milestone counts.
+     - `lastActivityAt`: Latest timestamp of start, completion, or notes update.
+
+3. **Prerequisite-Aware Dynamic Unblocking Engine**:
+   - When a milestone is marked `COMPLETED`:
+     1. The engine re-evaluates all downstream milestones dependent on that skill.
+     2. If all required prerequisites for a downstream milestone are satisfied, it is dynamically unblocked from `BLOCKED` to `NOT_STARTED`.
+     3. Next recommended milestone is recalculated and advanced automatically.
+   - When a milestone is reopened (`REOPEN`):
+     1. Status reverts to `IN_PROGRESS` and `completedAt` is cleared.
+     2. Overall completion percentage drops deterministically.
+     3. Downstream milestones whose prerequisite requirements are no longer satisfied are automatically re-blocked.
+   - Self-reported obstacles (e.g. difficult exercise or tooling blocker) are preserved independently of prerequisite satisfaction until the user explicitly unblocks them.
+
+4. **Adaptive Next-Step Recommendation Engine**:
+   - Automatically identifies the single most actionable next step for the learner:
+     1. Active milestone in progress with lowest `orderIndex`.
+     2. First unblocked milestone in `NOT_STARTED` state with lowest `orderIndex`.
+     3. Identifies parallel available milestones that can be studied concurrently.
+   - Provides clear pedagogical rationale explaining why the milestone was selected.
+   - Deterministic tie-breaking ensures 100% reproducible recommendations without calling Gemini AI on every page load.
+
+5. **Controlled Roadmap Adjustment Workflow (Milestone Breakdown)**:
+   - When a learner encounters a challenging or blocked milestone:
+     1. Learner clicks **"Need Help? Break Down Step"** and optionally describes their obstacle.
+     2. **Propose Breakdown** (`POST /api/roadmaps/:id/milestones/:milestoneId/propose-breakdown`): Returns 2–4 structured sub-milestones (e.g., Foundational Drill, Sandbox Implementation, Peer Review) without mutating the roadmap.
+     3. **Review & Confirm**: Learner inspects the proposed sub-steps in an interactive modal.
+     4. **Apply Adaptation** (`POST /api/roadmaps/:id/milestones/:milestoneId/apply-breakdown`): Replaces the single target milestone with the structured sub-steps.
+     5. **100% History Preservation**: Completed milestones, notes, timestamps, and prerequisite integrity remain completely untouched.
+     6. **Audit History Tracking**: Appends an immutable record to `roadmap.adaptiveAdjustmentHistory`.
+
+6. **Optional AI Assistance & Graceful Failure**:
+   - Uses Google Gemini AI only for intelligent milestone breakdown suggestions when requested by the learner.
+   - Rate-limited via `aiRateLimiter` to protect quotas.
+   - If Gemini is unavailable, rate-limited, or times out, the deterministic breakdown engine automatically generates pedagogically structured sub-steps.
+   - Core milestone tracking, progress updates, and next recommendations require zero external AI calls and operate completely offline.
+
+### V2.3 API Endpoints
+| Method | Route | Description | Auth Required | Rate Limited |
+| :--- | :--- | :--- | :--- | :--- |
+| `PATCH` | `/api/roadmaps/:id/milestones/:milestoneId` | Update milestone state (`START`, `COMPLETE`, `REOPEN`, `REPORT_BLOCKER`, `UPDATE_NOTES`) | Yes (JWT/Cookie) | No |
+| `POST` | `/api/roadmaps/:id/milestones/:milestoneId/propose-breakdown` | Propose adaptive sub-steps for a difficult milestone | Yes (JWT/Cookie) | Yes (`aiRateLimiter`) |
+| `POST` | `/api/roadmaps/:id/milestones/:milestoneId/apply-breakdown` | Confirm and apply adaptive sub-milestones to roadmap | Yes (JWT/Cookie) | No |
+| `POST` | `/api/roadmaps/:id/milestones/initialize` | Initialize V2.3 milestones on legacy roadmaps | Yes (JWT/Cookie) | No |
+
+### Multi-Tenant Isolation & Security
+- Strict ownership check on all milestone routes: `roadmap.user.toString() === req.user._id.toString()`. Cross-user access returns HTTP 404.
+- Atomic updates prevent race conditions and conflicting progress changes.
+- Input validation: invalid milestone IDs, unauthorized state transitions, and attempts to break down already-completed milestones are safely rejected with HTTP 400.
+
+### V2.3 Automated Test Suite
+- **Engine Unit Tests**: `npm run test:milestone` (14 unit tests for progress calculation, division-by-zero protection, prerequisite unblocking, duplicate prevention, history preservation, and profile-based satisfaction).
+- **Full-Stack Integration Tests**: `npm run test:v23` (54 tests for unauthenticated rejection, multi-tenant isolation, starting/completing milestones, learner notes, blocker reporting, reopening, adaptive proposal & application, and MongoDB persistence).
+- **Full Platform Suite**: `npm run test:all` (All 10 test suites, 172+ assertions passing with zero regressions).
+
+---
+
+## 🎓 EnhanceUs V2.4 — Contextual AI Learning Assistant & Curated Learning Resources
+
+EnhanceUs V2.4 introduces two connected capabilities that transform EnhanceUs into an intelligent, end-to-end learning companion:
+
+1. **Contextual AI Learning Assistant (AI Learning Coach)**: An assistant deeply integrated into the learner's existing roadmap. It understands the authenticated user's current goal, target competencies, prerequisite graph, active milestone, completion criteria, and reported blockers—without requiring the user to re-explain their context.
+2. **Curated Educational Resources**: Relevant, vetted documentation, tutorials, references, and interactive sites connected directly to the user's roadmap competencies and milestones, fortified by strict Server-Side Request Forgery (SSRF) protection and honest verification badges.
+
+### Core Architecture & Capabilities
+
+1. **Contextual Awareness & Data Minimization**:
+   - The assistant operates with minimal, strictly authorized context retrieved using the authenticated user's identity:
+     - Learning goal title and target competencies.
+     - Roadmap sequence, active stage, and prerequisite dependencies.
+     - Focused milestone (title, description, completion criteria, status, and reported obstacles).
+     - Related curated resources.
+   - Sensitive user information (credentials, full chat transcripts from unrelated modules, unrelated goals) is never sent to the model.
+
+2. **9 Specialized Pedagogical Action Types**:
+   - `EXPLAIN_CONCEPT`: Contextual explanation tailored to the milestone skill and baseline assumptions.
+   - `HELP_BLOCKER`: Actionable 3-step strategy addressing self-reported obstacles or debugging challenges.
+   - `GUIDE_MILESTONE`: Practical milestone completion checklist and verification advice.
+   - `PRACTICE_EXERCISE`: Hands-on coding drill with objectives, sandbox instructions, and a progressive hints accordion.
+   - `KNOWLEDGE_CHECK`: 2-question interactive quiz testing core conceptual and architectural understanding.
+   - `EVALUATE_ANSWER`: Server-side answer evaluation providing instant feedback and explanations without client-side trust.
+   - `SUMMARIZE_PROGRESS`: Real-time summary of completed milestones, remaining tasks, and next actionable steps.
+   - `PEER_PREP`: Recommended questions to ask when scheduling a peer exchange session on EnhanceUs.
+   - `GENERAL_QUERY`: Freeform learning question evaluated strictly within the learner's roadmap context.
+
+3. **Strict SSRF Protection & Canonical Educational Catalog**:
+   - `isValidExternalUrl`: Enforces RFC-compliant validation rejecting loopbacks (`localhost`, `127.0.0.1`, `::1`), Class A/B/C private IPv4 subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), AWS/Cloud metadata IPs (`169.254.169.254`), and unsupported protocols (`ftp:`, `file:`, `javascript:`, `data:`).
+   - Canonical resource catalog includes official standards (MDN Web Docs, React.dev, Nodejs.org, TypeScript, Docker Docs, Kubernetes.io, PostgreSQL, MongoDB Manual, Git-SCM, SQLBolt, freeCodeCamp, etc.).
+   - **Honest Verification Labels**: Resources are honestly labeled with verification notes (e.g. `Verified Docs` with source citations) vs `Suggested` external links. URLs generated by AI are never marked as verified without strict server-side validation.
+
+4. **Multi-Tenant Scoping, Bookmarks & Ratings**:
+   - Users can bookmark resources for offline reference (`POST /api/resources/:resourceId/bookmark`).
+   - Bookmarks are strictly isolated to the authenticated user (`bookmarkedBy` array / filter).
+   - Community usefulness votes (`usefulCount`, `notUsefulCount`) allow learners to rate helpful materials without exposing individual votes across tenants.
+   - Conversation history is scoped to `{ user, roadmap }` and can be cleared on demand (`DELETE /api/assistant/conversation/:roadmapId`).
+   - A user cannot read, query, or reset another user's assistant conversation.
+
+5. **Zero-Cost Design & Graceful Degradation**:
+   - Fully reuses the existing `@google/genai` integration and configuration.
+   - AI rate limiting (`aiRateLimiter`) prevents quota exhaustion.
+   - In offline mode or when Gemini quota is exceeded, the assistant automatically switches to a high-quality deterministic pedagogical engine, delivering structured exercises, progressive hints, and quizzes without breaking progress.
+   - Stored curated resources remain 100% accessible even when the AI service is offline.
+
+### V2.4 API Endpoints
+| Method | Route | Description | Auth Required | Rate Limited |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/assistant/query` | Submit contextual query to AI Learning Coach | Yes (JWT/Cookie) | Yes (`aiRateLimiter`) |
+| `POST` | `/api/assistant/evaluate` | Evaluate knowledge check quiz answer server-side | Yes (JWT/Cookie) | No |
+| `GET` | `/api/assistant/conversation/:roadmapId` | Retrieve conversation history for owned roadmap | Yes (JWT/Cookie) | No |
+| `DELETE` | `/api/assistant/conversation/:roadmapId` | Clear conversation history for owned roadmap | Yes (JWT/Cookie) | No |
+| `GET` | `/api/resources` | Retrieve curated educational resources (filtered by skill/type) | Yes (JWT/Cookie) | No |
+| `GET` | `/api/resources/bookmarked` | List resources bookmarked by authenticated user | Yes (JWT/Cookie) | No |
+| `POST` | `/api/resources/:resourceId/bookmark` | Toggle saved/bookmarked state for resource | Yes (JWT/Cookie) | No |
+| `POST` | `/api/resources/:resourceId/rate` | Submit usefulness rating (`isUseful: true/false`) | Yes (JWT/Cookie) | No |
+
+### V2.4 Automated Test Suite
+- **Resource Engine Tests**: `npm run test:resource` (41 tests for SSRF prevention, URL validation, skill catalog filtering, bookmark isolation, and usefulness ratings).
+- **Assistant Integration Tests**: `npm run test:assistant` (33 full-stack tests for authentication, cross-tenant isolation, 9 assistant actions, progressive hints, interactive quiz evaluation, conversation persistence and reset).
+- **Full Platform Suite**: `npm run test:all` (12 test suites, 185+ passing assertions with zero regressions).
+
+---
 
 ## 🛠️ Technology Stack
 
@@ -412,9 +567,16 @@ npm run test:gemini
 ```
 
 ### Run the Roadmap Integration Test Suite (V2.1)
+### Run the Resource Engine Test Suite (V2.4)
 ```bash
 cd server
-npm run test:roadmap
+npm run test:resource
+```
+
+### Run the AI Learning Coach Integration Test Suite (V2.4)
+```bash
+cd server
+npm run test:assistant
 ```
 
 ### Run All Backend Test Suites
@@ -422,12 +584,19 @@ npm run test:roadmap
 cd server
 npm run test:all
 ```
-*Executes all 64 automated unit and integration tests across 5 test suites:*
+*Executes all 185+ automated unit and integration tests across 12 test suites:*
 - *11 tests: Security & Multi-Tenant Data Isolation*
 - *13 tests: Google Gemini AI Goal Decomposition*
 - *21 tests: V2.1 AI-Powered Learning Roadmaps*
+- *13 tests: V2.2 Prerequisite Dependency Engine (Kahn's algorithm & cycles)*
+- *24 tests: V2.2 Prerequisite Topological Ordering Integration*
+- *14 tests: V2.3 Milestone Progress Engine & Adaptive Recommendations*
+- *54 tests: V2.3 Persistent Milestones & Adaptive Breakdown Integration*
+- *41 tests: V2.4 Curated Educational Resources & Strict SSRF Protection*
+- *33 tests: V2.4 Contextual AI Coach, Progressive Hints & Quiz Evaluation*
 - *13 tests: Permanent Account Deletion & Cascading Purge*
 - *6 tests: Platform Feedback Delivery & Rate Limiting*
+- *22 tests: Peer Session Scheduling, Rating & Reviews*
 
 ### Production Client Build
 ```bash

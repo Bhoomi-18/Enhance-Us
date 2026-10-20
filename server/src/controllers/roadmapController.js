@@ -64,3 +64,81 @@ export const analyzeRoadmapDependencies = async (req, res, next) => {
   }
 };
 
+export const updateMilestone = async (req, res, next) => {
+  try {
+    const { id, milestoneId } = req.params;
+    const { action, notes, learnerNotes, blockedReason } = req.body || {};
+    const effectiveNotes = notes !== undefined ? notes : learnerNotes;
+    const result = await roadmapService.updateRoadmapMilestone(
+      id,
+      milestoneId,
+      action,
+      { notes: effectiveNotes, learnerNotes: effectiveNotes, blockedReason },
+      req.user._id
+    );
+    return ApiResponse.success(
+      res,
+      'Milestone status updated successfully',
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const proposeMilestoneBreakdown = async (req, res, next) => {
+  try {
+    const { id, milestoneId } = req.params;
+    const { reason, userNote } = req.body || {};
+    const proposal = await roadmapService.proposeRoadmapMilestoneBreakdown(
+      id,
+      milestoneId,
+      reason || userNote || '',
+      req.user._id
+    );
+    return ApiResponse.success(
+      res,
+      'Milestone breakdown proposed successfully',
+      proposal
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const applyMilestoneBreakdown = async (req, res, next) => {
+  try {
+    const { id, milestoneId } = req.params;
+    const { subMilestones, reason } = req.body || {};
+    const result = await roadmapService.applyRoadmapMilestoneBreakdown(
+      id,
+      milestoneId,
+      subMilestones,
+      reason,
+      req.user._id
+    );
+    return ApiResponse.success(
+      res,
+      'Milestone breakdown applied successfully',
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const initializeMilestones = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const roadmap = await roadmapService.initializeRoadmapMilestones(id, req.user._id);
+    return ApiResponse.success(
+      res,
+      'Roadmap milestones initialized successfully',
+      { roadmap }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+

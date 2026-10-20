@@ -9,6 +9,11 @@ const startServer = async () => {
     // Step 1: Connect to MongoDB
     await connectDB();
 
+    // Auto-seed canonical learning resources
+    import('./services/curatedResourceService.js')
+      .then((m) => m.seedCanonicalResources())
+      .catch((e) => console.warn('[Server Startup] Resource seed warning:', e.message));
+
     // Step 2: Start Express listener after DB connection succeeds
     const server = app.listen(config.port, () => {
       console.log(`[Server] EnhanceUs API is running on http://localhost:${config.port}`);

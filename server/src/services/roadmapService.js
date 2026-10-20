@@ -5,6 +5,13 @@ import User from '../models/userModel.js';
 import { mockGoalsStore } from './goalService.js';
 import geminiRoadmapService from './geminiRoadmapService.js';
 import { ApiError } from '../utils/apiError.js';
+import {
+  generateInitialMilestones,
+  calculateRoadmapProgress,
+  updateMilestoneStatus,
+  proposeMilestoneBreakdown,
+  applyMilestoneBreakdown,
+} from './milestoneEngine.js';
 
 // In-Memory Roadmap Store for Mock DB mode
 export const mockRoadmapsStore = [];
@@ -116,16 +123,34 @@ export const generateRoadmap = async (userId, goalId, options = {}) => {
       console.warn('[Roadmap] Pre-analysis in mock mode failed:', depErr.message);
     }
 
+    const initialMilestones = generateInitialMilestones(
+      {
+        skills: generated.skills,
+        stages: generated.stages,
+        learningOrder: depAnalysis?.learningOrder || [],
+        dependencyEdges: depAnalysis?.dependencyEdges || [],
+      },
+      mockUserSkills
+    );
+    const { progress: initialProgress, updatedMilestones } = calculateRoadmapProgress(
+      initialMilestones,
+      generated.skills,
+      depAnalysis?.dependencyEdges || []
+    );
+
     const mockRoadmap = {
       _id: 'mock_roadmap_' + Date.now(),
       user: userId.toString(),
       goal,
       ...generated,
-      roadmapSchemaVersion: depAnalysis ? '2.2' : '2.1',
+      roadmapSchemaVersion: '2.3',
       dependencyEdges: depAnalysis?.dependencyEdges || [],
       learningOrder: depAnalysis?.learningOrder || [],
       prerequisiteAnalysis: depAnalysis?.prerequisiteAnalysis || {},
       dependencyAnalysisStatus: depAnalysis ? 'COMPLETED' : 'NOT_ANALYZED',
+      milestones: updatedMilestones,
+      progress: initialProgress,
+      adaptiveAdjustmentHistory: [],
       status: 'ACTIVE',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -183,6 +208,21 @@ export const generateRoadmap = async (userId, goalId, options = {}) => {
     console.warn('[Roadmap] Pre-analysis during roadmap generation failed:', depErr.message);
   }
 
+  const initialMilestones = generateInitialMilestones(
+    {
+      skills: generatedRoadmap.skills,
+      stages: generatedRoadmap.stages,
+      learningOrder: depAnalysis?.learningOrder || [],
+      dependencyEdges: depAnalysis?.dependencyEdges || [],
+    },
+    userSkills
+  );
+  const { progress: initialProgress, updatedMilestones } = calculateRoadmapProgress(
+    initialMilestones,
+    generatedRoadmap.skills,
+    depAnalysis?.dependencyEdges || []
+  );
+
   // 5. Persist to MongoDB with owner reference
   const roadmap = await Roadmap.create({
     user: userId,
@@ -194,11 +234,14 @@ export const generateRoadmap = async (userId, goalId, options = {}) => {
     skills: generatedRoadmap.skills,
     stages: generatedRoadmap.stages,
     metadata: generatedRoadmap.metadata,
-    roadmapSchemaVersion: depAnalysis ? '2.2' : '2.1',
+    roadmapSchemaVersion: '2.3',
     dependencyEdges: depAnalysis?.dependencyEdges || [],
     learningOrder: depAnalysis?.learningOrder || [],
     prerequisiteAnalysis: depAnalysis?.prerequisiteAnalysis || {},
     dependencyAnalysisStatus: depAnalysis ? 'COMPLETED' : 'NOT_ANALYZED',
+    milestones: updatedMilestones,
+    progress: initialProgress,
+    adaptiveAdjustmentHistory: [],
     status: 'ACTIVE',
   });
 
@@ -245,6 +288,21 @@ export const getRoadmapById = async (roadmapId, userId) => {
     if (!found) {
       throw new ApiError(404, 'Roadmap not found');
     }
+    if (!found.milestones || found.milestones.length === 0) {
+      const mockUserSkills = [
+        { name: 'JavaScript', category: 'Programming Languages', level: 'intermediate' },
+        { name: 'React', category: 'Frontend', level: 'intermediate' },
+      ];
+      const genMs = generateInitialMilestones(found, mockUserSkills);
+      const { progress: calcP, updatedMilestones } = calculateRoadmapProgress(
+        genMs,
+        found.skills,
+        found.dependencyEdges
+      );
+      found.milestones = updatedMilestones;
+      found.progress = calcP;
+      found.roadmapSchemaVersion = '2.3';
+    }
     return found;
   }
 
@@ -260,6 +318,26 @@ export const getRoadmapById = async (roadmapId, userId) => {
   if (!roadmap) {
     // Avoid leaking whether another user's private roadmap exists
     throw new ApiError(404, 'Roadmap not found');
+  }
+
+  // Lazy initialization of milestones for older roadmaps
+  if (!roadmap.milestones || roadmap.milestones.length === 0) {
+    const user = await User.findById(userId).select('skills');
+    const uSkills = (user?.skills || []).map((s) => ({
+      name: s.name,
+      category: s.category || 'General',
+      level: s.level ? s.level.toLowerCase() : 'intermediate',
+    }));
+    const generatedMs = generateInitialMilestones(roadmap, uSkills);
+    const { progress: calcProg, updatedMilestones } = calculateRoadmapProgress(
+      generatedMs,
+      roadmap.skills,
+      roadmap.dependencyEdges
+    );
+    roadmap.milestones = updatedMilestones;
+    roadmap.progress = calcProg;
+    roadmap.roadmapSchemaVersion = '2.3';
+    await roadmap.save();
   }
 
   return roadmap;
@@ -370,10 +448,157 @@ export const analyzeRoadmapDependencies = async (roadmapId, userId, options = {}
   return roadmap;
 };
 
+/**
+ * Update milestone status (START, COMPLETE, REOPEN, BLOCK, UPDATE_NOTES) with strict ownership
+ */
+export const updateRoadmapMilestone = async (roadmapId, milestoneId, action, options = {}, userId) => {
+  if (process.env.MOCK_DB === 'true') {
+    const roadmap = mockRoadmapsStore.find(
+      (r) => r._id === roadmapId && r.user === userId.toString()
+    );
+    if (!roadmap) {
+      throw new ApiError(404, 'Roadmap not found');
+    }
+
+    const result = updateMilestoneStatus(roadmap, milestoneId, action, options);
+    roadmap.updatedAt = new Date().toISOString();
+    return result;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(roadmapId)) {
+    throw new ApiError(400, 'Invalid roadmap identifier format');
+  }
+
+  const roadmap = await Roadmap.findOne({ _id: roadmapId, user: userId });
+  if (!roadmap) {
+    throw new ApiError(404, 'Roadmap not found');
+  }
+
+  const result = updateMilestoneStatus(roadmap, milestoneId, action, options);
+  await roadmap.save();
+  return result;
+};
+
+/**
+ * Propose adaptive breakdown of a milestone
+ */
+export const proposeRoadmapMilestoneBreakdown = async (roadmapId, milestoneId, reason = '', userId) => {
+  if (process.env.MOCK_DB === 'true') {
+    const roadmap = mockRoadmapsStore.find(
+      (r) => r._id === roadmapId && r.user === userId.toString()
+    );
+    if (!roadmap) {
+      throw new ApiError(404, 'Roadmap not found');
+    }
+    return proposeMilestoneBreakdown(roadmap, milestoneId, reason);
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(roadmapId)) {
+    throw new ApiError(400, 'Invalid roadmap identifier format');
+  }
+
+  const roadmap = await Roadmap.findOne({ _id: roadmapId, user: userId });
+  if (!roadmap) {
+    throw new ApiError(404, 'Roadmap not found');
+  }
+
+  return proposeMilestoneBreakdown(roadmap, milestoneId, reason);
+};
+
+/**
+ * Apply adaptive breakdown: replaces target milestone with sub-milestones
+ */
+export const applyRoadmapMilestoneBreakdown = async (roadmapId, milestoneId, subMilestones = [], reason = '', userId) => {
+  if (process.env.MOCK_DB === 'true') {
+    const roadmap = mockRoadmapsStore.find(
+      (r) => r._id === roadmapId && r.user === userId.toString()
+    );
+    if (!roadmap) {
+      throw new ApiError(404, 'Roadmap not found');
+    }
+    const result = applyMilestoneBreakdown(roadmap, milestoneId, subMilestones, reason);
+    roadmap.updatedAt = new Date().toISOString();
+    return result;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(roadmapId)) {
+    throw new ApiError(400, 'Invalid roadmap identifier format');
+  }
+
+  const roadmap = await Roadmap.findOne({ _id: roadmapId, user: userId });
+  if (!roadmap) {
+    throw new ApiError(404, 'Roadmap not found');
+  }
+
+  const result = applyMilestoneBreakdown(roadmap, milestoneId, subMilestones, reason);
+  await roadmap.save();
+  return result;
+};
+
+/**
+ * Initialize milestones for a roadmap
+ */
+export const initializeRoadmapMilestones = async (roadmapId, userId) => {
+  if (process.env.MOCK_DB === 'true') {
+    const roadmap = mockRoadmapsStore.find(
+      (r) => r._id === roadmapId && r.user === userId.toString()
+    );
+    if (!roadmap) {
+      throw new ApiError(404, 'Roadmap not found');
+    }
+    const mockUserSkills = [
+      { name: 'JavaScript', category: 'Programming Languages', level: 'intermediate' },
+    ];
+    const generated = generateInitialMilestones(roadmap, mockUserSkills);
+    const { progress, updatedMilestones } = calculateRoadmapProgress(
+      generated,
+      roadmap.skills,
+      roadmap.dependencyEdges
+    );
+    roadmap.milestones = updatedMilestones;
+    roadmap.progress = progress;
+    roadmap.roadmapSchemaVersion = '2.3';
+    roadmap.updatedAt = new Date().toISOString();
+    return roadmap;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(roadmapId)) {
+    throw new ApiError(400, 'Invalid roadmap identifier format');
+  }
+
+  const roadmap = await Roadmap.findOne({ _id: roadmapId, user: userId });
+  if (!roadmap) {
+    throw new ApiError(404, 'Roadmap not found');
+  }
+
+  const user = await User.findById(userId).select('skills');
+  const userSkills = (user?.skills || []).map((s) => ({
+    name: s.name,
+    category: s.category || 'General',
+    level: s.level ? s.level.toLowerCase() : 'intermediate',
+  }));
+
+  const generated = generateInitialMilestones(roadmap, userSkills);
+  const { progress, updatedMilestones } = calculateRoadmapProgress(
+    generated,
+    roadmap.skills,
+    roadmap.dependencyEdges
+  );
+  roadmap.milestones = updatedMilestones;
+  roadmap.progress = progress;
+  roadmap.roadmapSchemaVersion = '2.3';
+  await roadmap.save();
+  return roadmap;
+};
+
 export default {
   generateRoadmap,
   getUserRoadmaps,
   getRoadmapById,
   deleteRoadmap,
   analyzeRoadmapDependencies,
+  updateRoadmapMilestone,
+  proposeRoadmapMilestoneBreakdown,
+  applyRoadmapMilestoneBreakdown,
+  initializeRoadmapMilestones,
 };
