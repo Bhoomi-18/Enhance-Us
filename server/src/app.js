@@ -9,6 +9,21 @@ import apiRoutes from './routes/index.js';
 
 const app = express();
 
+// Security: Disable X-Powered-By header to avoid fingerprinting
+app.disable('x-powered-by');
+
+// Security: Baseline HTTP Security Headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
 // Parse allowed origins from environment variable
 const allowedOrigins = config.clientOrigin
   ? config.clientOrigin.split(',').map((o) => o.trim().replace(/\/$/, ''))
@@ -41,9 +56,9 @@ app.use(
 // Cookie Parser Middleware
 app.use(cookieParser());
 
-// Body Parser Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body Parser Middleware with explicit payload bounds (1MB limit to protect against DoS)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Request Logger
 app.use(requestLogger);

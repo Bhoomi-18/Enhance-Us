@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Session from '../models/sessionModel.js';
 import User from '../models/userModel.js';
 import Connection from '../models/connectionModel.js';
@@ -34,23 +35,63 @@ export const createSession = async (userId, sessionData) => {
     throw new ApiError(400, 'Duration must be between 15 and 240 minutes');
   }
 
-  // 2. Validate date & time
-  const dateStr = typeof date === 'string' && date.includes('T') ? date.split('T')[0] : String(date);
-  const scheduledDateTime = new Date(`${dateStr}T${time}:00`);
-
-  if (isNaN(scheduledDateTime.getTime())) {
-    throw new ApiError(400, 'Invalid date or time format');
+  // 2. Normalize and validate date & time (supports HH:mm, HH:mm:ss, ISO strings)
+  let normalizedTime = String(time || '').trim();
+  const timeParts = normalizedTime.split(':');
+  if (timeParts.length >= 2) {
+    const hours = timeParts[0].padStart(2, '0');
+    const minutes = timeParts[1].padStart(2, '0');
+    const seconds = timeParts.length >= 3 ? timeParts[2].slice(0, 2).padStart(2, '0') : '00';
+    normalizedTime = `${hours}:${minutes}:${seconds}`;
+  } else {
+    throw new ApiError(400, 'Invalid time format. Expected HH:mm');
   }
 
-  // Allow a 2-minute buffer for clock drift
-  if (scheduledDateTime.getTime() < Date.now() - 120000) {
+  const dateStr = typeof date === 'string' && date.includes('T') ? date.split('T')[0] : String(date).trim();
+  const scheduledDateTime = new Date(`${dateStr}T${normalizedTime}`);
+
+  if (isNaN(scheduledDateTime.getTime())) {
+    throw new ApiError(400, 'Invalid date or time format. Please provide a valid date and time');
+  }
+
+  // Allow a 15-minute buffer for clock drift and local timezone boundary skew
+  if (scheduledDateTime.getTime() < Date.now() - 15 * 60 * 1000) {
     throw new ApiError(400, 'Session date and time must be set in the future');
   }
 
   const hostIdStr = (userId?._id ? userId._id : userId).toString();
-  let resolvedConnectionId = connectionId || null;
-  let resolvedGoalId = goalId || null;
-  let resolvedRecipientId = recipientId ? (recipientId._id ? recipientId._id.toString() : recipientId.toString()) : null;
+  const displayTime = normalizedTime.slice(0, 5);
+
+  let resolvedConnectionId = connectionId && typeof connectionId === 'object' ? (connectionId._id || connectionId.id) : connectionId;
+  resolvedConnectionId = resolvedConnectionId ? resolvedConnectionId.toString().trim() : null;
+  if (!resolvedConnectionId || resolvedConnectionId === 'undefined' || resolvedConnectionId === 'null') {
+    resolvedConnectionId = null;
+  }
+
+  let resolvedGoalId = goalId && typeof goalId === 'object' ? (goalId._id || goalId.id) : goalId;
+  resolvedGoalId = resolvedGoalId ? resolvedGoalId.toString().trim() : null;
+  if (!resolvedGoalId || resolvedGoalId === 'undefined' || resolvedGoalId === 'null') {
+    resolvedGoalId = null;
+  }
+
+  let resolvedRecipientId = recipientId && typeof recipientId === 'object' ? (recipientId._id || recipientId.id) : recipientId;
+  resolvedRecipientId = resolvedRecipientId ? resolvedRecipientId.toString().trim() : null;
+  if (!resolvedRecipientId || resolvedRecipientId === 'undefined' || resolvedRecipientId === 'null') {
+    resolvedRecipientId = null;
+  }
+
+  // Validate ObjectId structure in real MongoDB mode to prevent unhandled CastErrors
+  if (process.env.MOCK_DB !== 'true') {
+    if (resolvedConnectionId && !mongoose.Types.ObjectId.isValid(resolvedConnectionId)) {
+      throw new ApiError(400, 'Specified connection ID is invalid');
+    }
+    if (resolvedRecipientId && !mongoose.Types.ObjectId.isValid(resolvedRecipientId)) {
+      throw new ApiError(400, 'Specified recipient peer ID is invalid');
+    }
+    if (resolvedGoalId && !mongoose.Types.ObjectId.isValid(resolvedGoalId)) {
+      resolvedGoalId = null;
+    }
+  }
 
   // 3. Resolve connection and verify authorization
   if (resolvedConnectionId) {
@@ -142,7 +183,7 @@ export const createSession = async (userId, sessionData) => {
     const duplicate = mockSessionsStore.find(
       (s) =>
         s.status === 'SCHEDULED' &&
-        s.time === time &&
+        (s.time === displayTime || s.time === time) &&
         s.date.startsWith(dateStr) &&
         s.participants.includes(hostIdStr) &&
         s.participants.includes(resolvedRecipientId)
@@ -158,7 +199,7 @@ export const createSession = async (userId, sessionData) => {
       participants: [hostIdStr, resolvedRecipientId],
       host: hostIdStr,
       date: scheduledDateTime.toISOString(),
-      time,
+      time: displayTime,
       durationMinutes: durationNum,
       skillTaught: skillTaught.trim(),
       sessionNotes: sessionNotes ? sessionNotes.trim() : '',
@@ -174,7 +215,6 @@ export const createSession = async (userId, sessionData) => {
   const duplicate = await Session.findOne({
     participants: { $all: [userId, resolvedRecipientId] },
     date: scheduledDateTime,
-    time,
     status: 'SCHEDULED',
   });
   if (duplicate) {
@@ -188,7 +228,7 @@ export const createSession = async (userId, sessionData) => {
     participants: [userId, resolvedRecipientId],
     host: userId,
     date: scheduledDateTime,
-    time,
+    time: displayTime,
     durationMinutes: durationNum,
     skillTaught: skillTaught.trim(),
     sessionNotes: sessionNotes ? sessionNotes.trim() : '',
@@ -202,7 +242,7 @@ export const createSession = async (userId, sessionData) => {
       sender: userId,
       type: 'SESSION_SCHEDULED',
       title: 'New Exchange Session Scheduled',
-      message: `A new session for ${skillTaught.trim()} has been scheduled for ${scheduledDateTime.toLocaleDateString()} at ${time}.`,
+      message: `A new session for ${skillTaught.trim()} has been scheduled for ${scheduledDateTime.toLocaleDateString()} at ${displayTime}.`,
       link: `/sessions`,
     });
   } catch (notifErr) {
@@ -245,6 +285,10 @@ export const completeSession = async (sessionId, userId) => {
     }
     s.status = 'COMPLETED';
     return s;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+    throw new ApiError(404, 'Session not found');
   }
 
   const session = await Session.findById(sessionId);
@@ -296,6 +340,10 @@ export const cancelSession = async (sessionId, userId) => {
     }
     s.status = 'CANCELLED';
     return s;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+    throw new ApiError(404, 'Session not found');
   }
 
   const session = await Session.findById(sessionId);

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Review from '../models/reviewModel.js';
 import Session from '../models/sessionModel.js';
 import User from '../models/userModel.js';
@@ -25,6 +26,13 @@ export const createReview = async (reviewerId, reviewData) => {
   const overallRating = Math.round(((tRating + cRating + rRating) / 3) * 10) / 10;
   const callerIdStr = (reviewerId?._id ? reviewerId._id : reviewerId).toString();
 
+  // Normalize reviewee ID from object, string, or undefined
+  let targetReviewee = revieweeId && typeof revieweeId === 'object' ? (revieweeId._id || revieweeId.id) : revieweeId;
+  targetReviewee = targetReviewee ? targetReviewee.toString().trim() : null;
+  if (!targetReviewee || targetReviewee === 'undefined' || targetReviewee === 'null' || targetReviewee === '[object Object]') {
+    targetReviewee = null;
+  }
+
   // Mock DB Mode
   if (process.env.MOCK_DB === 'true') {
     const { mockSessionsStore } = await import('./sessionService.js');
@@ -43,7 +51,6 @@ export const createReview = async (reviewerId, reviewData) => {
       }
     }
 
-    let targetReviewee = revieweeId ? (revieweeId._id ? revieweeId._id.toString() : revieweeId.toString()) : null;
     if (targetReviewee && callerIdStr === targetReviewee) {
       throw new ApiError(400, 'You cannot review yourself');
     }
@@ -89,6 +96,10 @@ export const createReview = async (reviewerId, reviewData) => {
   }
 
   // Real MongoDB Mode
+  if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+    throw new ApiError(404, 'Session not found');
+  }
+
   const session = await Session.findById(sessionId);
   if (!session) {
     throw new ApiError(404, 'Session not found');
@@ -106,20 +117,21 @@ export const createReview = async (reviewerId, reviewData) => {
     throw new ApiError(403, 'Forbidden: You are not an authorized participant in this session');
   }
 
-  // Resolve peer reviewee ID
-  let targetRevieweeId = revieweeId ? (revieweeId._id ? revieweeId._id.toString() : revieweeId.toString()) : null;
-  if (!targetRevieweeId) {
+  // Auto-resolve peer reviewee ID from session participants if not provided or empty
+  if (!targetReviewee) {
     const otherParticipant = session.participants.find(
       (p) => (p._id ? p._id.toString() : p.toString()) !== callerIdStr
     );
     if (otherParticipant) {
-      targetRevieweeId = (otherParticipant._id ? otherParticipant._id : otherParticipant).toString();
+      targetReviewee = (otherParticipant._id ? otherParticipant._id : otherParticipant).toString();
     }
   }
 
-  if (!targetRevieweeId) {
+  if (!targetReviewee) {
     throw new ApiError(400, 'Unable to identify peer participant for this review');
   }
+
+  const targetRevieweeId = targetReviewee;
 
   if (callerIdStr === targetRevieweeId) {
     throw new ApiError(400, 'You cannot review yourself');
@@ -195,6 +207,10 @@ export const getUserReviews = async (userId) => {
         createdAt: new Date().toISOString(),
       },
     ];
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return [];
   }
 
   return await Review.find({ reviewee: userId })

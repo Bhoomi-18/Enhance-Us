@@ -62,5 +62,9 @@ const sessionSchema = new mongoose.Schema(
   }
 );
 
+// Compound indexes for user session queries and host history
+sessionSchema.index({ participants: 1, status: 1, date: 1 });
+sessionSchema.index({ host: 1, date: -1 });
+
 export const Session = mongoose.model('Session', sessionSchema);
 export default Session;

@@ -183,9 +183,9 @@ export const SessionsPage = () => {
 
   const handleCompleteSession = async (sessionId) => {
     try {
-      await completeSession(sessionId);
-      const targetSession = sessions.find((s) => s._id === sessionId);
-      setSelectedSessionForReview(targetSession || { _id: sessionId });
+      const res = await completeSession(sessionId);
+      const targetSession = res?.data?.session || sessions.find((s) => s._id === sessionId) || { _id: sessionId };
+      setSelectedSessionForReview(targetSession);
       setStatusMessage('Session marked as completed. You can now submit your peer review.');
       fetchInitialData();
     } catch (err) {
@@ -212,11 +212,16 @@ export const SessionsPage = () => {
     setSubmittingReview(true);
     try {
       const peer = getPeer(selectedSessionForReview);
-      const targetRevieweeId = peer?._id || peer;
+      let targetRevieweeId = null;
+      if (peer) {
+        targetRevieweeId = (typeof peer === 'object' && (peer._id || peer.id))
+          ? (peer._id || peer.id).toString()
+          : peer.toString();
+      }
 
       await createReview({
         sessionId: selectedSessionForReview._id,
-        revieweeId: targetRevieweeId,
+        revieweeId: targetRevieweeId || undefined,
         teachingRating: reviewData.teachingRating,
         communicationRating: reviewData.communicationRating,
         reliabilityRating: reviewData.reliabilityRating,
@@ -379,11 +384,13 @@ export const SessionsPage = () => {
 
           {/* Connection Selection */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
+            <label htmlFor="exchange-connection-select" className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
               Exchange Partner & Goal *
             </label>
             {connections.length > 0 ? (
               <select
+                id="exchange-connection-select"
+                aria-label="Select exchange partner and shared goal"
                 value={sessionData.connectionId}
                 onChange={handleConnectionChange}
                 disabled={submittingSession}
@@ -414,6 +421,7 @@ export const SessionsPage = () => {
           </div>
 
           <Input
+            id="session-skill-taught"
             label="Skill Being Taught *"
             value={sessionData.skillTaught}
             onChange={(e) => setSessionData({ ...sessionData, skillTaught: e.target.value })}
@@ -424,6 +432,7 @@ export const SessionsPage = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <Input
+              id="session-date-input"
               label="Session Date *"
               type="date"
               min={todayStr}
@@ -433,6 +442,7 @@ export const SessionsPage = () => {
               required
             />
             <Input
+              id="session-time-input"
               label="Session Time *"
               type="time"
               value={sessionData.time}
@@ -443,10 +453,12 @@ export const SessionsPage = () => {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
+            <label htmlFor="session-duration-select" className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
               Duration (Minutes)
             </label>
             <select
+              id="session-duration-select"
+              aria-label="Session duration in minutes"
               value={sessionData.durationMinutes}
               onChange={(e) => setSessionData({ ...sessionData, durationMinutes: Number(e.target.value) })}
               disabled={submittingSession}
@@ -461,10 +473,12 @@ export const SessionsPage = () => {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
+            <label htmlFor="session-notes-textarea" className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
               Session Agenda & Notes
             </label>
             <textarea
+              id="session-notes-textarea"
+              aria-label="Session agenda and notes"
               rows={3}
               placeholder="Topics to cover, meeting link (Google Meet / Zoom), code repo, or preparation materials..."
               value={sessionData.sessionNotes}
@@ -529,8 +543,10 @@ export const SessionsPage = () => {
 
           <div className="space-y-3">
             <div>
-              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Teaching Quality (1-5★) *</label>
+              <label htmlFor="review-teaching-rating" className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Teaching Quality (1-5★) *</label>
               <select
+                id="review-teaching-rating"
+                aria-label="Teaching quality rating"
                 value={reviewData.teachingRating}
                 onChange={(e) => setReviewData({ ...reviewData, teachingRating: Number(e.target.value) })}
                 disabled={submittingReview}
@@ -545,8 +561,10 @@ export const SessionsPage = () => {
             </div>
 
             <div>
-              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Communication Clarity (1-5★) *</label>
+              <label htmlFor="review-comm-rating" className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Communication Clarity (1-5★) *</label>
               <select
+                id="review-comm-rating"
+                aria-label="Communication clarity rating"
                 value={reviewData.communicationRating}
                 onChange={(e) => setReviewData({ ...reviewData, communicationRating: Number(e.target.value) })}
                 disabled={submittingReview}
@@ -561,8 +579,10 @@ export const SessionsPage = () => {
             </div>
 
             <div>
-              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Punctuality & Reliability (1-5★) *</label>
+              <label htmlFor="review-reliability-rating" className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Punctuality & Reliability (1-5★) *</label>
               <select
+                id="review-reliability-rating"
+                aria-label="Punctuality and reliability rating"
                 value={reviewData.reliabilityRating}
                 onChange={(e) => setReviewData({ ...reviewData, reliabilityRating: Number(e.target.value) })}
                 disabled={submittingReview}
@@ -579,12 +599,14 @@ export const SessionsPage = () => {
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <label className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
+              <label htmlFor="review-feedback-textarea" className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
                 Detailed Feedback (Optional)
               </label>
               <span className="text-[10px] text-slate-400">Optional</span>
             </div>
             <textarea
+              id="review-feedback-textarea"
+              aria-label="Detailed review feedback"
               rows={3}
               placeholder="What went well during this exchange session? What did you learn?"
               value={reviewData.feedbackText}

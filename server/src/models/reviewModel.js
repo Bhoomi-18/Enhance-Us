@@ -60,6 +60,8 @@ const reviewSchema = new mongoose.Schema(
 
 // Prevent duplicate reviews from same reviewer for same session
 reviewSchema.index({ session: 1, reviewer: 1 }, { unique: true });
+// Optimize user reputation query and review listing
+reviewSchema.index({ reviewee: 1, createdAt: -1 });
 
 export const Review = mongoose.model('Review', reviewSchema);
 export default Review;

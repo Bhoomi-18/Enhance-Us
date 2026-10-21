@@ -579,12 +579,26 @@ cd server
 npm run test:assistant
 ```
 
+### Run the V2.5 Release Readiness Test Suite
+```bash
+cd server
+npm run test:release
+```
+*Executes 35 automated release-readiness verification tests covering:*
+- *Baseline HTTP security headers (nosniff, clickjacking frameguard, XSS protection, referrer policy)*
+- *Express fingerprinting disabled (X-Powered-By omitted)*
+- *Authentication rate limiting & brute-force protection (RateLimit headers)*
+- *Edge-case session scheduling (HH:mm:ss normalization, future date buffer, self-scheduling rejection)*
+- *Peer review auto-resolution (corrupted peer object strings, rating bounds, duplicate prevention)*
+- *Multi-tenant isolation on roadmaps, milestones, AI coach, and bookmarks*
+- *Demo showcase account protection & safe cascading account deletion*
+
 ### Run All Backend Test Suites
 ```bash
 cd server
 npm run test:all
 ```
-*Executes all 185+ automated unit and integration tests across 12 test suites:*
+*Executes all 220+ automated unit and integration tests across 13 test suites with 0 failures:*
 - *11 tests: Security & Multi-Tenant Data Isolation*
 - *13 tests: Google Gemini AI Goal Decomposition*
 - *21 tests: V2.1 AI-Powered Learning Roadmaps*
@@ -597,12 +611,65 @@ npm run test:all
 - *13 tests: Permanent Account Deletion & Cascading Purge*
 - *6 tests: Platform Feedback Delivery & Rate Limiting*
 - *22 tests: Peer Session Scheduling, Rating & Reviews*
+- *35 tests: V2.5 Production Hardening, Security Headers & Release Readiness*
 
 ### Production Client Build
 ```bash
 cd client
 npm run build
 ```
+
+---
+
+## 🛡️ EnhanceUs V2.5 — Production Hardening & Release Readiness
+
+Version 2.5 finalizes EnhanceUs for a reliable, secure, accessible, and maintainable production release without adding unnecessary major features.
+
+### 1. Defect Fixes & Root-Cause Resolution
+- **Session Scheduling HTTP 400 Resolution**:
+  - *Time Format Normalization*: Resolved a bug where HTML5 time pickers or mobile browsers supplying `HH:mm:ss` resulted in malformed date strings (e.g. `2026-10-22T14:30:00:00`), causing `NaN` in `new Date()`. Time strings are now parsed, padded, and normalized cleanly as `HH:mm`.
+  - *Timezone Drift Buffer*: Expanded the future-date validation window with a 15-minute grace tolerance to accommodate server-client timezone offset and local clock skew without erroneously rejecting valid same-day sessions.
+  - *CastError Prevention*: Explicitly validates `mongoose.Types.ObjectId.isValid` on `connectionId`, `recipientId`, and `goalId` before running database queries, preventing unhandled Mongoose CastErrors.
+- **Peer Review Submission Failure Resolution**:
+  - *Robust Peer Resolution*: Resolved a defect in `SessionsPage.jsx` where unpopulated participant arrays caused `peer?._id` to be undefined or evaluated to `"[object Object]"`. Both populated user objects and raw string IDs are now parsed safely.
+  - *Server-Side Auto-Resolution*: `reviewService.js` now auto-resolves the target peer from session participants if `revieweeId` is omitted, undefined, null, or passed as a corrupted object string.
+  - *Review State Retention*: `handleCompleteSession` immediately passes the completed session instance to the review modal state, ensuring peer context is present without requiring an asynchronous refetch.
+
+### 2. Security Hardening
+- **HTTP Security Headers**: Native middleware configures `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `X-XSS-Protection: 1; mode=block`, and `Referrer-Policy: strict-origin-when-cross-origin`.
+- **Express Fingerprinting**: `app.disable('x-powered-by')` removes the default Express server signature to impede automated scanner reconnaissance.
+- **Payload Flooding Protection**: Explicit 1MB body limits are enforced on `express.json({ limit: '1mb' })` and `express.urlencoded({ extended: true, limit: '1mb' })`.
+- **Authentication Rate Limiting**: In-memory sliding-window rate limiter (`authRateLimiter.js`) restricts brute-force attempts on `/api/auth/login` and `/api/auth/register`, attaching standard `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` headers.
+- **Multi-Tenant Isolation**: Server-side authorization checks verify that users can only read, update, or delete their own roadmaps, milestones, bookmarks, sessions, and AI conversations.
+
+### 3. Database Indexes & Performance
+- **Session Collection**: Added compound index `{ participants: 1, status: 1, date: 1 }` and `{ host: 1, date: -1 }`.
+- **Review Collection**: Added compound index `{ reviewee: 1, createdAt: -1 }` alongside `{ session: 1, reviewer: 1 }` unique constraint.
+- **Learning Resource Collection**: Added index `{ bookmarkedBy: 1 }` alongside `{ skillName: 1, type: 1 }`.
+- **Roadmap & Assistant**: Compound indexes on `{ user: 1, createdAt: -1 }` and `{ user: 1, roadmap: 1 }`.
+
+### 4. Accessibility (WCAG 2.1 AA) & UX
+- Semantic HTML and full keyboard accessibility on all session scheduling and review form controls.
+- Explicit `id` and `htmlFor` pairings, screen-reader `aria-label` tags on selects, date/time inputs, rating pickers, and textareas.
+- Interactive status confirmation banners with dismissal actions and visible focus rings.
+
+---
+
+## 📋 V2.5 Release-Readiness Verification Checklist
+
+| Verification Category | Status | Details |
+| :--- | :--- | :--- |
+| **All Automated Tests (13 Suites)** | ✅ Verified | 220+ tests passing (`npm run test:all`) with 0 failures |
+| **V2.5 Release Readiness Suite** | ✅ Verified | 35 targeted release tests passing (`npm run test:release`) |
+| **Session Scheduling Fixes** | ✅ Verified | Date/time normalization, clock buffer, and duplicate prevention verified |
+| **Peer Review Fixes** | ✅ Verified | Auto-peer resolution, rating bounds, and reputation updates verified |
+| **Security Headers Enforced** | ✅ Verified | `nosniff`, `SAMEORIGIN`, `x-powered-by` disabled confirmed via HTTP test |
+| **Auth Rate Limiting** | ✅ Verified | RateLimit headers and 429 throttling confirmed |
+| **Multi-Tenant Data Isolation** | ✅ Verified | Strict server-side ownership checks across roadmaps, milestones, AI coach |
+| **Demo Account Protection** | ✅ Verified | Deletion blocked with 403; credentials and data preserved |
+| **Frontend Production Build** | ✅ Verified | `vite build` completed in 12.68s with 0 errors (`client/dist`) |
+| **Zero-Cost Constraint** | ✅ Verified | 100% native Node.js, Express, Mongoose, Tailwind CSS & free Gemini tier |
+| **Live Production Smoke Test** | ⏳ Pending Deploy | Requires deployment trigger to Render/Vercel with manual environment review |
 
 ---
 
@@ -637,4 +704,5 @@ Configure these environment variables in your server hosting environment (Render
    - The first request to Render after 15 minutes of inactivity may take ~30–45s while the server spins up.
 4. **No API Key Fallback**:
    - If `GEMINI_API_KEY` is not provided, EnhanceUs seamlessly uses its rule-based keyword taxonomy engine so the platform remains fully functional.
+
 

@@ -109,6 +109,8 @@ const learningResourceSchema = new mongoose.Schema(
 
 // Compound index for matching skill and type
 learningResourceSchema.index({ skillName: 1, type: 1 });
+// Index for fast retrieval of user bookmarks
+learningResourceSchema.index({ bookmarkedBy: 1 });
 
 export const LearningResource =
   mongoose.models.LearningResource || mongoose.model('LearningResource', learningResourceSchema);
