@@ -18,10 +18,12 @@ import {
   Menu,
   X,
   ChevronDown,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealth } from '../../hooks/useHealth';
 import { getNotifications } from '../../services/notificationService';
+import { checkAdminStatus } from '../../services/adminService';
 import Badge from '../ui/Badge';
 import ThemeToggle from '../common/ThemeToggle';
 import LogoutConfirmModal from '../common/LogoutConfirmModal';
@@ -37,6 +39,25 @@ export const Navbar = () => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isAuthenticated && user && !user.isDemo && user.emailVerified) {
+      checkAdminStatus()
+        .then((res) => {
+          if (isMounted) setIsAdminUser(Boolean(res?.data?.isAdmin));
+        })
+        .catch(() => {
+          if (isMounted) setIsAdminUser(false);
+        });
+    } else {
+      setIsAdminUser(false);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, user]);
 
   const dropdownRef = useRef(null);
 
@@ -109,6 +130,7 @@ export const Navbar = () => {
     { label: 'Messages', path: '/messages', icon: MessageSquare },
     { label: 'Sessions', path: '/sessions', icon: Calendar },
     { label: 'Search', path: '/search', icon: Search },
+    ...(isAdminUser ? [{ label: 'Admin', path: '/admin', icon: ShieldCheck }] : []),
   ];
 
   const displayName = user?.name?.trim() || 'Account';
@@ -286,6 +308,18 @@ export const Navbar = () => {
                             <Settings className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                             <span>Settings</span>
                           </Link>
+
+                          {isAdminUser && (
+                            <Link
+                              to="/admin"
+                              onClick={() => setProfileDropdownOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors"
+                              role="menuitem"
+                            >
+                              <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                              <span>Admin Portal</span>
+                            </Link>
+                          )}
                         </div>
 
                         {/* Logout Confirmation Trigger */}

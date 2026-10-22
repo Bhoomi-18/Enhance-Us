@@ -8,6 +8,8 @@ import {
   sendPasswordResetEmail,
 } from './plunkEmailService.js';
 import { DEMO_EMAIL as CONFIG_DEMO_EMAIL, DEMO_PASSWORD as CONFIG_DEMO_PASSWORD } from './demoProvisioningService.js';
+import { recordEvent } from './analyticsService.js';
+import { recordSecurityMetric } from './performanceTracker.js';
 
 export const DEMO_EMAIL = (CONFIG_DEMO_EMAIL || 'demo@enhanceus.org').toLowerCase();
 export const DEMO_PASSWORD = CONFIG_DEMO_PASSWORD || 'DemoPassword123!';
@@ -99,6 +101,12 @@ export const registerUser = async (userData) => {
 
   const token = generateToken({ id: user._id, email: user.email, name: user.name });
 
+  recordEvent({
+    eventType: 'signup_completed',
+    userId: user._id,
+    metadata: { skillsCount: user.skills?.length || 0 },
+  }).catch(() => {});
+
   return { user, token, emailDelivery };
 };
 
@@ -115,6 +123,7 @@ export const loginUser = async ({ email, password }) => {
   // ---------------------------------------------------------
   if (normalizedEmail === DEMO_EMAIL) {
     if (password !== DEMO_PASSWORD) {
+      recordSecurityMetric('failedLogins');
       throw new ApiError(401, 'Invalid email address or password');
     }
 
@@ -159,6 +168,7 @@ export const loginUser = async ({ email, password }) => {
   // If MongoDB is physically disconnected AND MOCK_DB === 'true', mock offline testing only
   if (User.db?.readyState !== 1 && process.env.MOCK_DB === 'true') {
     if (password === 'wrongpassword') {
+      recordSecurityMetric('failedLogins');
       throw new ApiError(401, 'Invalid email address or password');
     }
     const mockId = 'mock_user_' + Buffer.from(normalizedEmail).toString('hex').substring(0, 12);
@@ -185,14 +195,32 @@ export const loginUser = async ({ email, password }) => {
   const user = await User.findOne({ email: normalizedEmail }).select('+password');
 
   if (!user) {
+    recordSecurityMetric('failedLogins');
     throw new ApiError(401, 'Invalid email address or password');
+  }
+
+  // Check account suspension
+  if (user.isSuspended) {
+    recordSecurityMetric('failedLogins');
+    throw new ApiError(403, 'Account has been suspended. Please contact support@briefenai.me.');
   }
 
   // Verify password using bcrypt schema method
   const isMatch = await user.matchPassword(password);
   if (!isMatch) {
+    recordSecurityMetric('failedLogins');
     throw new ApiError(401, 'Invalid email address or password');
   }
+
+  // Update lastActiveAt
+  user.lastActiveAt = new Date();
+  await user.save().catch(() => {});
+
+  recordEvent({
+    eventType: 'login_success',
+    userId: user._id,
+    metadata: { isDemo: Boolean(user.isDemo) },
+  }).catch(() => {});
 
   const token = generateToken({ id: user._id, email: user.email, name: user.name });
 
@@ -218,6 +246,7 @@ export const verifyEmailToken = async (rawToken) => {
   }).select('+verificationTokenHash +verificationTokenExpires');
 
   if (!user) {
+    recordSecurityMetric('failedVerifications');
     throw new ApiError(400, 'Invalid or expired verification token. Please request a new verification link.');
   }
 
@@ -225,6 +254,11 @@ export const verifyEmailToken = async (rawToken) => {
   user.verificationTokenHash = undefined;
   user.verificationTokenExpires = undefined;
   await user.save();
+
+  recordEvent({
+    eventType: 'email_verified',
+    userId: user._id,
+  }).catch(() => {});
 
   return {
     success: true,

@@ -1,6 +1,7 @@
 import Feedback from '../models/feedbackModel.js';
 import { sendFeedbackNotificationEmail } from './plunkEmailService.js';
 import { ApiError } from '../utils/apiError.js';
+import { recordEvent } from './analyticsService.js';
 
 /**
  * Persists feedback to MongoDB and dispatches an email notification to support@briefenai.me
@@ -19,8 +20,16 @@ export const recordAndSendFeedback = async ({ rating, improvements, newFeatures,
         user: user?._id || null,
         submittedEmail: user?.email || null,
         emailDelivered: false,
+        status: 'NEW',
+        source: 'WEBSITE',
       });
       console.log(`📝 [Feedback Stored] ID: ${savedFeedback._id} by ${user?.email || 'Anonymous'}`);
+
+      recordEvent({
+        eventType: 'feedback_submitted',
+        userId: user?._id || null,
+        metadata: { rating },
+      }).catch(() => {});
     } catch (dbErr) {
       console.warn('⚠️ [Feedback DB Warning] Could not persist to MongoDB:', dbErr.message);
     }

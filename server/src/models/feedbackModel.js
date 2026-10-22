@@ -44,6 +44,32 @@ const feedbackSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    status: {
+      type: String,
+      enum: ['NEW', 'REVIEWED', 'IN_PROGRESS', 'RESOLVED'],
+      default: 'NEW',
+      index: true,
+    },
+    source: {
+      type: String,
+      enum: ['WEBSITE', 'GOOGLE_FORMS_CSV', 'IMPORT'],
+      default: 'WEBSITE',
+    },
+    adminNotes: [
+      {
+        note: { type: String, required: true },
+        adminEmail: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    resolvedAt: {
+      type: Date,
+      default: null,
+    },
+    resolvedBy: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

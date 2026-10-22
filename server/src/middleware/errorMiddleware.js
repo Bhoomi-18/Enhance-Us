@@ -1,6 +1,7 @@
 import { ApiResponse } from '../utils/apiResponse.js';
 import { HTTP_STATUS, MESSAGES } from '../constants/index.js';
 import config from '../config/env.js';
+import { recordApplicationError } from '../services/performanceTracker.js';
 
 export const errorMiddleware = (err, req, res, next) => {
   let statusCode = err.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
@@ -26,6 +27,17 @@ export const errorMiddleware = (err, req, res, next) => {
     const field = Object.keys(err.keyValue)[0];
     message = `Duplicate value for field '${field}'. Please use another value.`;
   }
+
+  // Track error in performance telemetry (safely sanitized)
+  try {
+    recordApplicationError({
+      method: req.method,
+      path: req.originalUrl,
+      statusCode,
+      message,
+      details: { errors },
+    });
+  } catch {}
 
   // Log error stack in non-production
   if (config.nodeEnv !== 'production') {

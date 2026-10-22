@@ -127,6 +127,23 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    isSuspended: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+    suspensionReason: {
+      type: String,
+      default: null,
+    },
+    lastActiveAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

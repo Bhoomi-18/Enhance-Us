@@ -30,6 +30,10 @@ export const authenticateUser = async (req, res, next) => {
         throw new ApiError(401, 'Not authorized, user no longer exists');
       }
 
+      if (user.isSuspended) {
+        throw new ApiError(403, 'Account has been suspended. Please contact support@briefenai.me.');
+      }
+
       req.user = user;
       return next();
     }

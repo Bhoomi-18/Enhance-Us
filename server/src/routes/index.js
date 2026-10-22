@@ -15,12 +15,14 @@ import roadmapRoutes from './roadmapRoutes.js';
 import feedbackRoutes from './feedbackRoutes.js';
 import resourceRoutes from './resourceRoutes.js';
 import assistantRoutes from './assistantRoutes.js';
+import adminRoutes from './adminRoutes.js';
 
 const router = Router();
 
 // API Routes
 router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
+router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
 router.use('/skills', skillRoutes);
 router.use('/goals', goalRoutes);
