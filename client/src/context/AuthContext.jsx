@@ -23,7 +23,11 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       setUser(null);
       setIsAuthenticated(false);
-      localStorage.removeItem('enhanceus_auth_token');
+      // Only remove token if the server explicitly rejected the credentials (401 / 403).
+      // Preserve token across cold-start delays, timeouts, or transient network offline events.
+      if (error?.statusCode === 401 || error?.statusCode === 403) {
+        localStorage.removeItem('enhanceus_auth_token');
+      }
     } finally {
       setLoading(false);
     }

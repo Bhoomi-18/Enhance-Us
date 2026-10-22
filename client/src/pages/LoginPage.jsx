@@ -7,6 +7,7 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import { useAuth } from '../context/AuthContext';
+import { forgotPassword } from '../services/authService';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -24,6 +25,10 @@ export const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState('');
+  const [forgotError, setForgotError] = useState('');
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -177,31 +182,100 @@ export const LoginPage = () => {
         </Card>
       </div>
 
-      {/* Forgot Password Architecture Foundation Modal */}
+      {/* Working Forgot Password Modal */}
       <Modal
         isOpen={isForgotModalOpen}
-        onClose={() => setIsForgotModalOpen(false)}
-        title="Password Reset Architecture"
-        description="EnhanceUs Password Recovery Protocol"
+        onClose={() => {
+          setIsForgotModalOpen(false);
+          setForgotSuccess('');
+          setForgotError('');
+        }}
+        title="Reset Account Password"
+        description="Enter your registered email address to receive a secure password reset link"
       >
-        <div className="space-y-4 text-xs text-slate-600">
-          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 flex items-start gap-2.5">
-            <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold mb-1">Architectural Note & Service Limitation:</p>
-              <p className="leading-relaxed">
-                Automated email password recovery requires an external transactional SMTP email service (e.g. Resend / SendGrid), which is intentionally excluded to keep EnhanceUs 100% free and open-source without SaaS dependencies.
-              </p>
+        <div className="space-y-4 text-xs">
+          {forgotSuccess ? (
+            <div className="space-y-4">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                {forgotSuccess}
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setIsForgotModalOpen(false);
+                    setForgotSuccess('');
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
-          </div>
-          <p>
-            In production environments, password reset tokens are dispatched via encrypted email links. For local testing, password updates can be performed directly or via API endpoints.
-          </p>
-          <div className="flex justify-end pt-2">
-            <Button size="sm" variant="outline" onClick={() => setIsForgotModalOpen(false)}>
-              Understood
-            </Button>
-          </div>
+          ) : (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setForgotLoading(true);
+                setForgotError('');
+                try {
+                  const res = await forgotPassword(forgotEmail);
+                  setForgotSuccess(
+                    res.data?.message ||
+                      'If an account exists with this email address, a password reset link has been dispatched to your inbox.'
+                  );
+                } catch (err) {
+                  setForgotError(
+                    err.response?.data?.message ||
+                      err.message ||
+                      'Failed to process password reset request. Please try again.'
+                  );
+                } finally {
+                  setForgotLoading(false);
+                }
+              }}
+              className="space-y-3"
+            >
+              {forgotError && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300">
+                  {forgotError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Email Address
+                </label>
+                <Input
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  icon={Mail}
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  disabled={forgotLoading}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsForgotModalOpen(false)}
+                  disabled={forgotLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  isLoading={forgotLoading}
+                >
+                  Send Reset Link
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       </Modal>
     </PageContainer>

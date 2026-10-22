@@ -76,6 +76,9 @@ async function runGeminiIntegrationSuite() {
     const token = regRes.data.data?.token;
     const userId = regRes.data.data?.user?._id;
 
+    // Verify test user for protected actions
+    await request('/auth/test-verify', 'POST', { userId });
+
     // Test 1: Unauthenticated access rejected
     const unauthRes = await request('/goals/analyze', 'POST', {
       description: 'I want to build a mobile app with React Native and Node.',

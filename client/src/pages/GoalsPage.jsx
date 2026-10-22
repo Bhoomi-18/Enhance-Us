@@ -75,8 +75,14 @@ export const GoalsPage = () => {
           <LoadingSpinner size="lg" label="Fetching goals..." />
         </div>
       ) : error ? (
-        <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs text-center">
-          {error}
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchGoalsList} leftIcon={RefreshCw}>
+            Retry
+          </Button>
         </div>
       ) : goals.length === 0 ? (
         <Card>

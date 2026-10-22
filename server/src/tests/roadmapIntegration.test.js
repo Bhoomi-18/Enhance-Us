@@ -87,6 +87,10 @@ async function runRoadmapIntegrationSuite() {
     const tokenB = regResB.data.data?.token;
     const userIdB = regResB.data.data?.user?._id;
 
+    // Verify test accounts for protected goal & roadmap actions
+    await request('/auth/test-verify', 'POST', { email: userAEmail });
+    await request('/auth/test-verify', 'POST', { email: userBEmail });
+
     // Test 1: Unauthenticated access blocked on all roadmap endpoints
     const unauthGen = await request('/roadmaps/generate/507f1f77bcf86cd799439011', 'POST', {});
     assert(unauthGen.status === 401, 'Unauthenticated Blocked: POST /api/roadmaps/generate/:id (401)');

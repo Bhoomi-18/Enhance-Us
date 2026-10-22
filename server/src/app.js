@@ -66,6 +66,14 @@ app.use(requestLogger);
 // Base API Routes
 app.use('/api', apiRoutes);
 
+// Lightweight Root Liveness Endpoint (ideal for Render health checks and external uptime monitors)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Root route welcome message
 app.get('/', (req, res) => {
   res.json({
@@ -73,6 +81,7 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     description: 'Goal-driven skill exchange platform API',
     healthCheck: '/api/health',
+    livenessCheck: '/health',
     authEndpoints: '/api/auth',
   });
 });

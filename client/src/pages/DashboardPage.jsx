@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Target, Users, Zap, Plus, ArrowRight } from 'lucide-react';
+import { LayoutDashboard, Target, Users, Zap, Plus, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import EmptyState from '../components/ui/EmptyState';
 import GoalCreateModal from '../components/goals/GoalCreateModal';
 import { getGoals } from '../services/goalService';
@@ -12,10 +13,12 @@ import { getGoals } from '../services/goalService';
 export const DashboardPage = () => {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const fetchGoalsData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await getGoals();
       if (response?.data?.goals) {
@@ -23,6 +26,7 @@ export const DashboardPage = () => {
       }
     } catch (e) {
       console.warn('[Dashboard Fetch Error]', e.message);
+      setError(e?.response?.data?.message || e.message || 'Unable to load goals. The server may be waking up.');
     } finally {
       setLoading(false);
     }
@@ -105,7 +109,29 @@ export const DashboardPage = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">Loading active goals...</div>
+            <div className="py-12 flex justify-center">
+              <LoadingSpinner size="md" label="Loading active goals..." />
+            </div>
+          ) : error ? (
+            <div className="py-8 px-4 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 mb-3">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                Unable to load goals
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-4">
+                {error}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                leftIcon={RefreshCw}
+                onClick={fetchGoalsData}
+              >
+                Retry
+              </Button>
+            </div>
           ) : goals.length === 0 ? (
             <EmptyState
               icon={Target}

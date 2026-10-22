@@ -20,8 +20,8 @@ export const mockRoadmapsStore = [];
  * Generate a personalized learning roadmap from an owned goal and profile skills
  */
 export const generateRoadmap = async (userId, goalId, options = {}) => {
-  // Handle Mock DB Mode (for tests and isolated demo runs without live DB)
-  if (process.env.MOCK_DB === 'true') {
+  // Handle Mock DB Mode (offline test fallback only)
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     const goal = mockGoalsStore.find(
       (g) => g._id === goalId && g.user === userId.toString()
     );
@@ -252,7 +252,7 @@ export const generateRoadmap = async (userId, goalId, options = {}) => {
  * Retrieve all roadmaps owned by the authenticated user
  */
 export const getUserRoadmaps = async (userId, filters = {}) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     let roadmaps = mockRoadmapsStore.filter((r) => r.user === userId.toString());
     if (filters.goalId) {
       roadmaps = roadmaps.filter(
@@ -281,7 +281,7 @@ export const getUserRoadmaps = async (userId, filters = {}) => {
  * Retrieve a single roadmap with strict ownership isolation
  */
 export const getRoadmapById = async (roadmapId, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     const found = mockRoadmapsStore.find(
       (r) => r._id === roadmapId && r.user === userId.toString()
     );
@@ -347,7 +347,7 @@ export const getRoadmapById = async (roadmapId, userId) => {
  * Delete a roadmap owned by the authenticated user
  */
 export const deleteRoadmap = async (roadmapId, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     const index = mockRoadmapsStore.findIndex(
       (r) => r._id === roadmapId && r.user === userId.toString()
     );
@@ -375,7 +375,7 @@ export const deleteRoadmap = async (roadmapId, userId) => {
  */
 export const analyzeRoadmapDependencies = async (roadmapId, userId, options = {}) => {
   // Handle Mock DB Mode
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     const roadmap = mockRoadmapsStore.find(
       (r) => r._id === roadmapId && r.user === userId.toString()
     );
@@ -452,7 +452,7 @@ export const analyzeRoadmapDependencies = async (roadmapId, userId, options = {}
  * Update milestone status (START, COMPLETE, REOPEN, BLOCK, UPDATE_NOTES) with strict ownership
  */
 export const updateRoadmapMilestone = async (roadmapId, milestoneId, action, options = {}, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     const roadmap = mockRoadmapsStore.find(
       (r) => r._id === roadmapId && r.user === userId.toString()
     );
@@ -483,7 +483,7 @@ export const updateRoadmapMilestone = async (roadmapId, milestoneId, action, opt
  * Propose adaptive breakdown of a milestone
  */
 export const proposeRoadmapMilestoneBreakdown = async (roadmapId, milestoneId, reason = '', userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     const roadmap = mockRoadmapsStore.find(
       (r) => r._id === roadmapId && r.user === userId.toString()
     );
@@ -509,7 +509,7 @@ export const proposeRoadmapMilestoneBreakdown = async (roadmapId, milestoneId, r
  * Apply adaptive breakdown: replaces target milestone with sub-milestones
  */
 export const applyRoadmapMilestoneBreakdown = async (roadmapId, milestoneId, subMilestones = [], reason = '', userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     const roadmap = mockRoadmapsStore.find(
       (r) => r._id === roadmapId && r.user === userId.toString()
     );
@@ -539,7 +539,7 @@ export const applyRoadmapMilestoneBreakdown = async (roadmapId, milestoneId, sub
  * Initialize milestones for a roadmap
  */
 export const initializeRoadmapMilestones = async (roadmapId, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Roadmap.db?.readyState !== 1) {
     const roadmap = mockRoadmapsStore.find(
       (r) => r._id === roadmapId && r.user === userId.toString()
     );

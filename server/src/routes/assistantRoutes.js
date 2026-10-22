@@ -5,7 +5,7 @@ import {
   clearConversation,
   evaluateAnswer,
 } from '../controllers/assistantController.js';
-import { authenticateUser } from '../middleware/authMiddleware.js';
+import { authenticateUser, requireEmailVerified } from '../middleware/authMiddleware.js';
 import { aiRateLimiter } from '../middleware/aiRateLimiter.js';
 
 const router = Router();
@@ -13,11 +13,11 @@ const router = Router();
 // Protect all assistant endpoints with JWT / session authentication
 router.use(authenticateUser);
 
-// Contextual assistant query (rate-limited)
-router.post('/query', aiRateLimiter, postQuery);
+// Contextual assistant query (rate-limited & email verified)
+router.post('/query', requireEmailVerified, aiRateLimiter, postQuery);
 
 // Knowledge check quiz evaluation
-router.post('/evaluate', evaluateAnswer);
+router.post('/evaluate', requireEmailVerified, evaluateAnswer);
 
 // Retrieve conversation history for a roadmap
 router.get('/conversation/:roadmapId', getConversation);

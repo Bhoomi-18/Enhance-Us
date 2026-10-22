@@ -91,6 +91,10 @@ async function runMilestoneIntegrationSuite() {
     assert(regResB.status === 201 && regResB.data?.data?.token, 'User B Registration');
     const tokenB = regResB.data?.data?.token;
 
+    // Verify test accounts for protected goal & roadmap actions
+    await request('/auth/test-verify', 'POST', { email: userAEmail });
+    await request('/auth/test-verify', 'POST', { email: userBEmail });
+
     // 3. User A creates a Goal & generates Roadmap
     const goalResA = await request('/goals', 'POST', {
       title: 'Full Stack Distributed Systems Mastery',
@@ -128,7 +132,7 @@ async function runMilestoneIntegrationSuite() {
       { action: 'START' },
       tokenB
     );
-    assert(crossTenantUpdate.status === 404, 'Multi-tenant Isolation: User B cannot modify User A milestone (404)');
+    assert(crossTenantUpdate.status === 404 || crossTenantUpdate.status === 403, 'Multi-tenant Isolation: User B cannot modify User A milestone (404/403)');
 
     const crossTenantPropose = await request(
       `/roadmaps/${roadmapIdA}/milestones/${firstMilestone.milestoneId}/propose-breakdown`,
@@ -136,7 +140,7 @@ async function runMilestoneIntegrationSuite() {
       { userNote: 'Intruder note' },
       tokenB
     );
-    assert(crossTenantPropose.status === 404, 'Multi-tenant Isolation: User B cannot propose breakdown on User A roadmap (404)');
+    assert(crossTenantPropose.status === 404 || crossTenantPropose.status === 403, 'Multi-tenant Isolation: User B cannot propose breakdown on User A roadmap (404/403)');
 
     const crossTenantApply = await request(
       `/roadmaps/${roadmapIdA}/milestones/${firstMilestone.milestoneId}/apply-breakdown`,
@@ -144,7 +148,7 @@ async function runMilestoneIntegrationSuite() {
       { subMilestones: [], reason: 'Intrusion' },
       tokenB
     );
-    assert(crossTenantApply.status === 404, 'Multi-tenant Isolation: User B cannot apply breakdown on User A roadmap (404)');
+    assert(crossTenantApply.status === 404 || crossTenantApply.status === 403, 'Multi-tenant Isolation: User B cannot apply breakdown on User A roadmap (404/403)');
 
     // 6. Action: START Milestone
     console.log('  ▶️ Testing Milestone START Action...');
@@ -154,6 +158,9 @@ async function runMilestoneIntegrationSuite() {
       { action: 'START' },
       tokenA
     );
+    if (startRes.status !== 200) {
+      console.error('DEBUG startRes:', startRes.status, JSON.stringify(startRes.data));
+    }
     assert(startRes.status === 200, 'User A starts first milestone (HTTP 200)');
     const roadmapAfterStart = startRes.data?.data?.roadmap;
     const startedMs = roadmapAfterStart?.milestones?.find((m) => m.milestoneId === firstMilestone.milestoneId);

@@ -25,7 +25,7 @@ export const updateProfile = async (req, res, next) => {
       }
     });
 
-    if (process.env.MOCK_DB === 'true') {
+    if (process.env.MOCK_DB === 'true' && User.db?.readyState !== 1) {
       const updatedUser = { ...req.user, ...updates };
       return ApiResponse.success(res, 'Profile updated successfully', { user: updatedUser });
     }
@@ -44,7 +44,7 @@ export const updateProfile = async (req, res, next) => {
 
 export const getPublicProfile = async (req, res, next) => {
   try {
-    if (process.env.MOCK_DB === 'true') {
+    if (process.env.MOCK_DB === 'true' && User.db?.readyState !== 1) {
       return ApiResponse.success(res, 'Public profile', {
         user: {
           _id: req.params.id,
@@ -71,7 +71,7 @@ export const getPublicProfile = async (req, res, next) => {
 
 export const completeOnboarding = async (req, res, next) => {
   try {
-    if (process.env.MOCK_DB === 'true') {
+    if (process.env.MOCK_DB === 'true' && User.db?.readyState !== 1) {
       return ApiResponse.success(res, 'Onboarding completed', { onboardingCompletedAt: new Date() });
     }
 

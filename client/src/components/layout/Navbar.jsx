@@ -174,8 +174,8 @@ export const Navbar = () => {
 
             {/* Right Action Bar */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Live API Connectivity Indicator */}
-              <div className="hidden lg:block">
+              {/* Live API Connectivity Indicator (Responsive) */}
+              <div className="hidden sm:block">
                 {isHealthLoading ? (
                   <Badge variant="slate" className="animate-pulse">Connecting API...</Badge>
                 ) : isConnected ? (
@@ -420,7 +420,9 @@ export const Navbar = () => {
                 {/* Mobile Logout Action with Confirmation */}
                 <div className="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {isConnected ? (
+                    {isHealthLoading ? (
+                      <Badge variant="slate" className="text-[10px] animate-pulse">Connecting API...</Badge>
+                    ) : isConnected ? (
                       <Badge variant="emerald" icon={Wifi} className="text-[10px]">API Live</Badge>
                     ) : (
                       <Badge variant="rose" icon={WifiOff} className="text-[10px]">API Offline</Badge>
@@ -456,6 +458,16 @@ export const Navbar = () => {
                 >
                   Features
                 </a>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between px-1">
+                  <span className="text-[11px] text-slate-500">Backend Status:</span>
+                  {isHealthLoading ? (
+                    <Badge variant="slate" className="text-[10px] animate-pulse">Connecting API...</Badge>
+                  ) : isConnected ? (
+                    <Badge variant="emerald" icon={Wifi} className="text-[10px]">API Live</Badge>
+                  ) : (
+                    <Badge variant="rose" icon={WifiOff} className="text-[10px]">API Offline</Badge>
+                  )}
+                </div>
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
                   <Link
                     to="/login"

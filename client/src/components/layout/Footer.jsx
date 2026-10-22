@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Compass, MessageSquarePlus, ExternalLink } from 'lucide-react';
+import { Compass, MessageSquarePlus, ExternalLink, Mail } from 'lucide-react';
 import FeedbackModal from '../common/FeedbackModal';
 import { GOOGLE_FEEDBACK_FORM_URL } from '../../services/feedbackService';
 
@@ -34,7 +34,8 @@ export const Footer = () => {
   return (
     <footer className="bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 mt-auto py-8 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Top Header / Contact Us Section */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800/80 mb-6">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-teal-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
               <Compass className="w-3.5 h-3.5" />
@@ -43,10 +44,30 @@ export const Footer = () => {
             <span className="text-xs text-slate-400 dark:text-slate-500">| Goal-Driven Skill Exchange</span>
           </div>
 
-          <div className="flex items-center gap-6">
+          {/* Contact Us Section */}
+          <div className="text-center md:text-right">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 mb-0.5">
+              <Mail className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span>Contact Us</span>
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              &copy; {new Date().getFullYear()} EnhanceUs. Built for ambitious goals and mutual skill growth.
+              For support, questions, or assistance with EnhanceUs, email us at:{' '}
+              <a
+                href="mailto:support@briefenai.me"
+                className="font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline transition-colors"
+                title="Send an email to support@briefenai.me"
+              >
+                support@briefenai.me
+              </a>
             </p>
+          </div>
+        </div>
+
+        {/* Bottom Bar: Copyright & Feedback Dropdown */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 text-center md:text-left">
+            &copy; {new Date().getFullYear()} EnhanceUs. Built for ambitious goals and mutual skill growth.
+          </p>
 
             <div className="relative" ref={menuRef}>
               <button
@@ -120,9 +141,8 @@ export const Footer = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Global Feedback Modal */}
+        {/* Global Feedback Modal */}
       <FeedbackModal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}

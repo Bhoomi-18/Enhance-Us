@@ -15,3 +15,19 @@ export const logout = async () => {
 export const getMe = async () => {
   return await apiClient.get('/auth/me');
 };
+
+export const verifyEmail = async (token) => {
+  return await apiClient.post('/auth/verify-email', { token });
+};
+
+export const resendVerification = async (email) => {
+  return await apiClient.post('/auth/resend-verification', { email });
+};
+
+export const forgotPassword = async (email) => {
+  return await apiClient.post('/auth/forgot-password', { email });
+};
+
+export const resetPassword = async ({ token, password }) => {
+  return await apiClient.post('/auth/reset-password', { token, password });
+};

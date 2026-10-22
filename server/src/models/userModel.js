@@ -103,6 +103,26 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationTokenHash: {
+      type: String,
+      select: false,
+    },
+    verificationTokenExpires: {
+      type: Date,
+      select: false,
+    },
+    resetPasswordTokenHash: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
     onboardingCompletedAt: {
       type: Date,
       default: null,
@@ -132,6 +152,10 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 userSchema.methods.toJSON = function () {
   const userObject = this.toObject();
   delete userObject.password;
+  delete userObject.verificationTokenHash;
+  delete userObject.verificationTokenExpires;
+  delete userObject.resetPasswordTokenHash;
+  delete userObject.resetPasswordExpires;
   delete userObject.__v;
   return userObject;
 };

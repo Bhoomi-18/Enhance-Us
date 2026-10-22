@@ -83,6 +83,10 @@ async function runPrerequisiteIntegrationSuite() {
     assert(regResB.status === 201 && regResB.data?.data?.token, 'User B Registration');
     const tokenB = regResB.data?.data?.token;
 
+    // Verify test accounts for protected goal & roadmap actions
+    await request('/auth/test-verify', 'POST', { email: userAEmail });
+    await request('/auth/test-verify', 'POST', { email: userBEmail });
+
     // 3. Security: Unauthenticated request to analyze dependencies rejected
     const unauthAnalyze = await request('/roadmaps/507f1f77bcf86cd799439011/analyze-dependencies', 'POST', {});
     assert(unauthAnalyze.status === 401, 'Unauthenticated Blocked: POST /api/roadmaps/:id/analyze-dependencies (401)');

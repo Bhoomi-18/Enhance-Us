@@ -3,6 +3,8 @@ import { Outlet } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import OnboardingTourModal from '../components/common/OnboardingTourModal';
+import ColdStartNotice from '../components/common/ColdStartNotice';
+import UnverifiedEmailNotice from '../components/common/UnverifiedEmailNotice';
 import { useAuth } from '../context/AuthContext';
 
 export const MainLayout = () => {
@@ -19,6 +21,8 @@ export const MainLayout = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+      <ColdStartNotice />
+      <UnverifiedEmailNotice />
       <Navbar />
       <main className="flex-1 flex flex-col">
         <Outlet />

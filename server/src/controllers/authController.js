@@ -80,3 +80,43 @@ export const getDemoCredentials = async (req, res, next) => {
     next(error);
   }
 };
+
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const token = req.body?.token || req.query?.token;
+    const result = await authService.verifyEmailToken(token);
+    return ApiResponse.success(res, result.message, result, HTTP_STATUS.OK);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resendVerification = async (req, res, next) => {
+  try {
+    const email = req.body?.email;
+    const result = await authService.resendVerificationEmail(email, req.user || null);
+    return ApiResponse.success(res, result.message, result, HTTP_STATUS.OK);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const email = req.body?.email;
+    const result = await authService.requestPasswordReset(email);
+    return ApiResponse.success(res, result.message, result, HTTP_STATUS.OK);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { token, password } = req.body || {};
+    const result = await authService.completePasswordReset({ token, password });
+    return ApiResponse.success(res, result.message, result, HTTP_STATUS.OK);
+  } catch (error) {
+    next(error);
+  }
+};

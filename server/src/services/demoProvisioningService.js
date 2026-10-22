@@ -13,7 +13,8 @@ export const DEMO_EMAIL = process.env.DEMO_USER_EMAIL || 'demo@enhanceus.org';
 export const DEMO_PASSWORD = process.env.DEMO_USER_PASSWORD || 'DemoPassword123!';
 
 export const provisionDemoAccount = async () => {
-  if (process.env.MOCK_DB === 'true') {
+  // Only skip MongoDB provisioning if MongoDB is truly disconnected
+  if (process.env.MOCK_DB === 'true' && User.db?.readyState !== 1) {
     return { enabled: true, email: DEMO_EMAIL, password: DEMO_PASSWORD };
   }
 
@@ -30,6 +31,7 @@ export const provisionDemoAccount = async () => {
         bio: 'Demonstration account showcasing EnhanceUs goal analysis and reciprocal skill exchanges.',
         avatar: '',
         isDemo: true,
+        emailVerified: true,
         onboardingCompletedAt: new Date(),
         skills: [
           { name: 'React', level: 'ADVANCED', category: 'Frontend', type: 'TEACH' },
@@ -60,6 +62,7 @@ export const provisionDemoAccount = async () => {
           bio: 'UI/UX Specialist & Figma Prototyper passionate about teaching design systems.',
           avatar: '',
           isDemo: true,
+          emailVerified: true,
           onboardingCompletedAt: new Date(),
           skills: [
             { name: 'UI/UX Design', level: 'EXPERT', category: 'Design', type: 'TEACH' },
@@ -214,6 +217,9 @@ export const provisionDemoAccount = async () => {
       });
 
       console.log('✅ EnhanceUs Demo Account provisioned successfully.');
+    } else if (!demoUser.emailVerified) {
+      demoUser.emailVerified = true;
+      await demoUser.save();
     }
 
     return { enabled: true, email: DEMO_EMAIL, password: DEMO_PASSWORD };

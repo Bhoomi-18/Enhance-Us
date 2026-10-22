@@ -148,8 +148,8 @@ export const calculateMatchScore = (user, candidate, goal) => {
 };
 
 export const generateMatchesForUser = async (userId, goalId = null) => {
-  // Handle Mock DB Mode
-  if (process.env.MOCK_DB === 'true') {
+  // Handle Mock DB Mode (offline test fallback only)
+  if (process.env.MOCK_DB === 'true' && Match.db?.readyState !== 1) {
     return [
       {
         _id: 'mock_match_1',
@@ -252,7 +252,7 @@ export const generateMatchesForUser = async (userId, goalId = null) => {
 };
 
 export const getMatchById = async (matchId, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Match.db?.readyState !== 1) {
     const matches = await generateMatchesForUser(userId);
     return matches[0];
   }

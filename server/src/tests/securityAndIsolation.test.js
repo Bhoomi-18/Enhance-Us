@@ -76,6 +76,11 @@ async function runSecuritySuite() {
     });
     assert(regB.status === 201 && regB.data.data?.token, 'User B Registration');
     const tokenB = regB.data.data?.token;
+    const idB = regB.data.data?.user?._id;
+
+    // Verify test accounts for protected goal actions
+    await request('/auth/test-verify', 'POST', { userId: idA });
+    await request('/auth/test-verify', 'POST', { userId: idB });
 
     // 3. User A creates a Goal
     const createGoalRes = await request('/goals', 'POST', {

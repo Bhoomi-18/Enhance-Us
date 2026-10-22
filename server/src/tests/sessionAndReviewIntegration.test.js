@@ -87,6 +87,11 @@ async function runSessionAndReviewSuite() {
     const userC = regC.data?.data?.user;
     assert(regC.status === 201 && tokenC, 'Register User C (Outsider)');
 
+    // Verify test accounts for protected session actions
+    await request('/auth/test-verify', 'POST', { email: emailA });
+    await request('/auth/test-verify', 'POST', { email: emailB });
+    await request('/auth/test-verify', 'POST', { email: emailC });
+
     // 2. User A creates a Goal
     const goalRes = await request(
       '/goals',

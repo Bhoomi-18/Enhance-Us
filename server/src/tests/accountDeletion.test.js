@@ -85,6 +85,10 @@ async function runAccountDeletionSuite() {
     const tokenB = regResB.data?.data?.token;
     const userIdB = regResB.data?.data?.user?._id;
 
+    // Verify test accounts for protected actions
+    await request('/auth/test-verify', 'POST', { userId: userIdA });
+    await request('/auth/test-verify', 'POST', { userId: userIdB });
+
     // Test 1: Unauthenticated request to delete account rejected
     const unauthRes = await request('/users/me', 'DELETE', {
       password,

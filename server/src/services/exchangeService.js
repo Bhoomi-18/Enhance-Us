@@ -15,7 +15,7 @@ export const createExchangeRequest = async (senderId, requestData) => {
     throw new ApiError(400, 'You cannot send an exchange request to yourself');
   }
 
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Connection.db?.readyState !== 1) {
     const mockReq = {
       _id: 'mock_request_' + Date.now(),
       sender: senderId.toString(),
@@ -63,7 +63,7 @@ export const createExchangeRequest = async (senderId, requestData) => {
 };
 
 export const getUserExchangeRequests = async (userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Connection.db?.readyState !== 1) {
     return {
       incoming: [],
       outgoing: [
@@ -96,7 +96,7 @@ export const getUserExchangeRequests = async (userId) => {
 };
 
 export const acceptExchangeRequest = async (requestId, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Connection.db?.readyState !== 1) {
     const existingReq = mockExchangeRequestsStore.find((r) => r._id === requestId);
     const sender = existingReq ? existingReq.sender : 'mock_sender';
     const goal = existingReq ? existingReq.goal : 'mock_goal_1';
@@ -182,7 +182,7 @@ export const acceptExchangeRequest = async (requestId, userId) => {
 };
 
 export const declineExchangeRequest = async (requestId, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Connection.db?.readyState !== 1) {
     return { success: true };
   }
 
@@ -206,7 +206,7 @@ export const declineExchangeRequest = async (requestId, userId) => {
 export const getUserConnections = async (userId) => {
   const userIdStr = (userId?._id ? userId._id : userId).toString();
 
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Connection.db?.readyState !== 1) {
     const userConns = mockConnectionsStore.filter((c) =>
       c.participants.some((p) => (p._id ? p._id.toString() : p.toString()) === userIdStr)
     );

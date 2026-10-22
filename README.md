@@ -700,8 +700,13 @@ Configure these environment variables in your server hosting environment (Render
    - For feedback delivery to work with Gmail, you must enable 2-Step Verification in Google Account Settings, generate a 16-character **App Password** under "Security > 2-Step Verification > App Passwords", and supply it in `SMTP_PASS`.
 2. **Gemini Free-Tier Rate Limits (429)**:
    - If multiple users generate goals concurrently, Google may return a 429 quota error. EnhanceUs catches this cleanly and displays a friendly error with a "Retry Analysis" button while preserving user text.
-3. **Cold Starts on Render Free Tier**:
-   - The first request to Render after 15 minutes of inactivity may take ~30–45s while the server spins up.
+3. **Render Free-Tier Cold Starts & Liveness Monitoring**:
+   - The first request to Render after 15 minutes of inactivity may take ~25–45s while the free container spins up.
+   - **Lightweight Liveness Endpoint (`GET /health`)**: EnhanceUs provides a zero-database, zero-auth root health check responding with HTTP 200 `{ status: "ok", timestamp: "..." }`. You can configure an external uptime monitor (e.g., [UptimeRobot](https://uptimerobot.com) or [Cron-Job.org](https://cron-job.org)) to ping `https://your-backend.onrender.com/health` every 14 minutes to prevent idle spin-down during active daytime hours.
+   - **60s Client Request Timeout**: The frontend API client timeout is set to `60000ms`, preventing premature connection drops while the container spins up.
+   - **Session Token Preservation**: `AuthContext` preserves authentication tokens during spin-up timeouts and network delays, only clearing credentials on explicit 401/403 authorization failures.
+   - **Wake-up Status Banner (`<ColdStartNotice />`)**: An accessible `role="status"` banner appears if requests exceed 2.5 seconds, reassuring users with transparent system feedback and a live status check button.
+   - **Idempotency Safeguards**: Safe read-only operations offer manual retries, while mutating requests (session bookings, reviews, messages) are never automatically retried to prevent double-submissions.
 4. **No API Key Fallback**:
    - If `GEMINI_API_KEY` is not provided, EnhanceUs seamlessly uses its rule-based keyword taxonomy engine so the platform remains fully functional.
 

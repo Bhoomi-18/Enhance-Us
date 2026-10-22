@@ -33,8 +33,8 @@ export const createReview = async (reviewerId, reviewData) => {
     targetReviewee = null;
   }
 
-  // Mock DB Mode
-  if (process.env.MOCK_DB === 'true') {
+  // Mock DB Mode (offline test fallback only)
+  if (process.env.MOCK_DB === 'true' && Review.db?.readyState !== 1) {
     const { mockSessionsStore } = await import('./sessionService.js');
     const mockSession = mockSessionsStore.find((s) => s._id === sessionId);
 
@@ -193,7 +193,7 @@ export const createReview = async (reviewerId, reviewData) => {
 };
 
 export const getUserReviews = async (userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Review.db?.readyState !== 1) {
     return [
       {
         _id: 'mock_rev_1',

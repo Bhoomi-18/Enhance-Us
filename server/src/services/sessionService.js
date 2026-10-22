@@ -81,7 +81,7 @@ export const createSession = async (userId, sessionData) => {
   }
 
   // Validate ObjectId structure in real MongoDB mode to prevent unhandled CastErrors
-  if (process.env.MOCK_DB !== 'true') {
+  if (Session.db?.readyState === 1 || process.env.MOCK_DB !== 'true') {
     if (resolvedConnectionId && !mongoose.Types.ObjectId.isValid(resolvedConnectionId)) {
       throw new ApiError(400, 'Specified connection ID is invalid');
     }
@@ -95,7 +95,7 @@ export const createSession = async (userId, sessionData) => {
 
   // 3. Resolve connection and verify authorization
   if (resolvedConnectionId) {
-    if (process.env.MOCK_DB === 'true') {
+    if (process.env.MOCK_DB === 'true' && Session.db?.readyState !== 1) {
       const { mockConnectionsStore } = await import('./exchangeService.js');
       const connection = mockConnectionsStore.find((c) => c._id === resolvedConnectionId);
       if (connection) {
@@ -148,7 +148,7 @@ export const createSession = async (userId, sessionData) => {
   }
 
   // 4. If no connection was explicitly provided, auto-link existing connection if one exists
-  if (!resolvedConnectionId && resolvedRecipientId && process.env.MOCK_DB !== 'true') {
+  if (!resolvedConnectionId && resolvedRecipientId && (Session.db?.readyState === 1 || process.env.MOCK_DB !== 'true')) {
     const existingConn = await Connection.findOne({
       participants: { $all: [userId, resolvedRecipientId] },
       status: 'ACTIVE',
@@ -171,7 +171,7 @@ export const createSession = async (userId, sessionData) => {
   }
 
   // 6. Check recipient user existence (when using real MongoDB)
-  if (process.env.MOCK_DB !== 'true') {
+  if (Session.db?.readyState === 1 || process.env.MOCK_DB !== 'true') {
     const recipientUser = await User.findById(resolvedRecipientId);
     if (!recipientUser) {
       throw new ApiError(404, 'Recipient peer user not found');
@@ -179,7 +179,7 @@ export const createSession = async (userId, sessionData) => {
   }
 
   // 7. Check for duplicate scheduled session at the same date and time
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Session.db?.readyState !== 1) {
     const duplicate = mockSessionsStore.find(
       (s) =>
         s.status === 'SCHEDULED' &&
@@ -255,7 +255,7 @@ export const createSession = async (userId, sessionData) => {
 export const getUserSessions = async (userId, statusFilter) => {
   const userIdStr = (userId?._id ? userId._id : userId).toString();
 
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Session.db?.readyState !== 1) {
     let userMockSessions = mockSessionsStore.filter((s) =>
       s.participants.includes(userIdStr)
     );
@@ -277,7 +277,7 @@ export const getUserSessions = async (userId, statusFilter) => {
 export const completeSession = async (sessionId, userId) => {
   const userIdStr = (userId?._id ? userId._id : userId).toString();
 
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Session.db?.readyState !== 1) {
     const s = mockSessionsStore.find((item) => item._id === sessionId);
     if (!s) throw new ApiError(404, 'Session not found');
     if (!s.participants.includes(userIdStr)) {
@@ -332,7 +332,7 @@ export const completeSession = async (sessionId, userId) => {
 export const cancelSession = async (sessionId, userId) => {
   const userIdStr = (userId?._id ? userId._id : userId).toString();
 
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Session.db?.readyState !== 1) {
     const s = mockSessionsStore.find((item) => item._id === sessionId);
     if (!s) throw new ApiError(404, 'Session not found');
     if (!s.participants.includes(userIdStr)) {

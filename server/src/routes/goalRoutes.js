@@ -7,7 +7,7 @@ import {
   deleteGoal,
   analyzeGoalPreview,
 } from '../controllers/goalController.js';
-import { authenticateUser } from '../middleware/authMiddleware.js';
+import { authenticateUser, requireEmailVerified } from '../middleware/authMiddleware.js';
 import { aiRateLimiter } from '../middleware/aiRateLimiter.js';
 
 const router = Router();
@@ -15,11 +15,11 @@ const router = Router();
 // Protect all goal routes with authenticateUser
 router.use(authenticateUser);
 
-router.post('/analyze', aiRateLimiter, analyzeGoalPreview);
-router.post('/', aiRateLimiter, createGoal);
+router.post('/analyze', requireEmailVerified, aiRateLimiter, analyzeGoalPreview);
+router.post('/', requireEmailVerified, aiRateLimiter, createGoal);
 router.get('/', getGoals);
 router.get('/:id', getGoal);
-router.patch('/:id', updateGoal);
-router.delete('/:id', deleteGoal);
+router.patch('/:id', requireEmailVerified, updateGoal);
+router.delete('/:id', requireEmailVerified, deleteGoal);
 
 export default router;

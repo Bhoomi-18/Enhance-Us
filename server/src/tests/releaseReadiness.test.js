@@ -40,6 +40,26 @@ const request = (path, method = 'GET', body = null, token = null) => {
   });
 };
 
+const requestRaw = (fullPath, method = 'GET') => {
+  return new Promise((resolve, reject) => {
+    const url = new URL('http://localhost:5000' + fullPath);
+    const req = http.request(url, { method }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve({ status: res.statusCode, headers: res.headers, data: parsed });
+        } catch (e) {
+          resolve({ status: res.statusCode, headers: res.headers, raw: data });
+        }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+};
+
 async function runReleaseReadinessSuite() {
   console.log('====================================================');
   console.log('🛡️  RUNNING ENHANCEUS V2.5 RELEASE READINESS SUITE');
@@ -66,11 +86,23 @@ async function runReleaseReadinessSuite() {
     const password = 'TestPassword123!';
 
     // ==========================================
-    // 1. BASELINE SECURITY HEADERS & FINGERPRINTING
+    // 1. BASELINE SECURITY HEADERS & HEALTH LIVENESS
     // ==========================================
-    console.log('🔒 [1] Baseline Security Headers & Express Fingerprinting:');
+    console.log('🔒 [1] Baseline Security Headers, Express Fingerprinting & Health Liveness:');
     const healthRes = await request('/health', 'GET');
-    assert(healthRes.status === 200, 'Health endpoint responds with HTTP 200');
+    assert(healthRes.status === 200, 'API Health endpoint (/api/health) responds with HTTP 200');
+
+    // Test root /health endpoint (Render free wake-up & uptime monitor liveness check)
+    const rootHealthRes = await requestRaw('/health', 'GET');
+    assert(rootHealthRes.status === 200, 'Root liveness endpoint (/health) responds with HTTP 200');
+    assert(rootHealthRes.data?.status === 'ok', 'Root liveness endpoint returns { status: "ok" }');
+    assert(typeof rootHealthRes.data?.timestamp === 'string', 'Root liveness endpoint returns valid ISO timestamp');
+
+    // Test root index endpoint (/)
+    const rootIndexRes = await requestRaw('/', 'GET');
+    assert(rootIndexRes.status === 200, 'Root welcome endpoint (/) responds with HTTP 200');
+    assert(rootIndexRes.data?.livenessCheck === '/health', 'Root welcome endpoint advertises livenessCheck');
+
     assert(
       healthRes.headers['x-content-type-options'] === 'nosniff',
       'Header X-Content-Type-Options: nosniff enforced'
@@ -126,6 +158,11 @@ async function runReleaseReadinessSuite() {
     const tokenC = regCRes.data?.data?.token;
     const userC = regCRes.data?.data?.user;
     assert(regCRes.status === 201 && tokenC, 'User C registered successfully');
+
+    // Verify test users for subsequent integration actions
+    await request('/auth/test-verify', 'POST', { userId: userA?._id });
+    await request('/auth/test-verify', 'POST', { userId: userB?._id });
+    await request('/auth/test-verify', 'POST', { userId: userC?._id });
 
     // Password validation
     const weakPassRes = await request('/auth/register', 'POST', {

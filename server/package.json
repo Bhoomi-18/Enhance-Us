@@ -20,7 +20,8 @@
     "test:resource": "node src/tests/resourceEngine.test.js",
     "test:assistant": "node src/tests/learningAssistantIntegration.test.js",
     "test:release": "node src/tests/releaseReadiness.test.js",
-    "test:all": "node src/tests/securityAndIsolation.test.js && node src/tests/geminiIntegration.test.js && node src/tests/roadmapIntegration.test.js && node src/tests/dependencyEngine.test.js && node src/tests/roadmapPrerequisiteIntegration.test.js && node src/tests/milestoneEngine.test.js && node src/tests/roadmapMilestoneIntegration.test.js && node src/tests/resourceEngine.test.js && node src/tests/learningAssistantIntegration.test.js && node src/tests/accountDeletion.test.js && node src/tests/feedbackIntegration.test.js && node src/tests/sessionAndReviewIntegration.test.js && node src/tests/releaseReadiness.test.js"
+    "test:auth": "node src/tests/authAndEmailWorkflows.test.js",
+    "test:all": "node src/tests/securityAndIsolation.test.js && node src/tests/geminiIntegration.test.js && node src/tests/roadmapIntegration.test.js && node src/tests/dependencyEngine.test.js && node src/tests/roadmapPrerequisiteIntegration.test.js && node src/tests/milestoneEngine.test.js && node src/tests/roadmapMilestoneIntegration.test.js && node src/tests/resourceEngine.test.js && node src/tests/learningAssistantIntegration.test.js && node src/tests/accountDeletion.test.js && node src/tests/feedbackIntegration.test.js && node src/tests/sessionAndReviewIntegration.test.js && node src/tests/releaseReadiness.test.js && node src/tests/authAndEmailWorkflows.test.js"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",

@@ -8,8 +8,11 @@ export const PublicOnlyRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <LoadingSpinner size="lg" label="Checking session..." />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 text-center">
+        <LoadingSpinner size="lg" label="Connecting to EnhanceUs..." />
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 max-w-sm animate-pulse">
+          Connecting to server. Please wait a few moments if waking up from sleep.
+        </p>
       </div>
     );
   }

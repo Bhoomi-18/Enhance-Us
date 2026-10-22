@@ -25,8 +25,8 @@ export const deleteUserAccount = async (userId, { password, confirmationPhrase }
     throw new ApiError(400, 'Confirmation phrase mismatch. You must type exactly DELETE.');
   }
 
-  // Handle Mock DB Mode (for offline / unit testing environments)
-  if (process.env.MOCK_DB === 'true') {
+  // Handle Mock DB Mode (only for offline / disconnected test environments)
+  if (process.env.MOCK_DB === 'true' && User.db?.readyState !== 1) {
     const userIdStr = userId.toString();
 
     // Prevent deletion of demo account

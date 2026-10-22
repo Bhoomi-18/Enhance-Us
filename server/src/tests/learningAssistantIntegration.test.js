@@ -96,6 +96,10 @@ async function runAssistantIntegrationSuite() {
     assert(regB.status === 201 && regB.data.data?.token, 'Register: User B created successfully');
     const tokenB = regB.data.data?.token;
 
+    // Verify test accounts for protected actions
+    await request('/auth/test-verify', 'POST', { email: userAEmail });
+    await request('/auth/test-verify', 'POST', { email: userBEmail });
+
     // ------------------------------------------------------------------
     // STEP 3: CREATE GOAL & ROADMAP FOR USER A
     // ------------------------------------------------------------------
@@ -179,8 +183,11 @@ async function runAssistantIntegrationSuite() {
       },
       tokenA
     );
-    assert(explainRes.status === 200 && explainRes.data.data?.content, 'Action: EXPLAIN_CONCEPT returns contextual learning explanation');
-    assert(explainRes.data.data.actionType === 'EXPLAIN_CONCEPT', 'Action: Response retains EXPLAIN_CONCEPT actionType');
+    if (explainRes.status !== 200) {
+      console.error('DEBUG explainRes:', explainRes.status, JSON.stringify(explainRes.data));
+    }
+    assert(explainRes.status === 200 && explainRes.data?.data?.content, 'Action: EXPLAIN_CONCEPT returns contextual learning explanation');
+    assert(explainRes.data?.data?.actionType === 'EXPLAIN_CONCEPT', 'Action: Response retains EXPLAIN_CONCEPT actionType');
 
     // Action 2: Guide Milestone
     const guideRes = await request(

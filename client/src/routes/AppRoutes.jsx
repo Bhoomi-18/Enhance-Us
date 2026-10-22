@@ -18,6 +18,8 @@ import NotificationsPage from '../pages/NotificationsPage';
 import SearchPage from '../pages/SearchPage';
 import SettingsPage from '../pages/SettingsPage';
 import NotFoundPage from '../pages/NotFoundPage';
+import VerifyEmailPage from '../pages/VerifyEmailPage';
+import ResetPasswordPage from '../pages/ResetPasswordPage';
 import ProtectedRoute from './ProtectedRoute';
 import PublicOnlyRoute from './PublicOnlyRoute';
 
@@ -27,6 +29,10 @@ export const AppRoutes = () => {
       <Route path="/" element={<MainLayout />}>
         {/* Public Landing Page */}
         <Route index element={<HomePage />} />
+
+        {/* Public Email Verification & Password Reset Routes */}
+        <Route path="verify-email" element={<VerifyEmailPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
 
         {/* Public Guest Only Auth Routes */}
         <Route

@@ -15,8 +15,8 @@ export const previewGoalAnalysis = async (userId, { title, description }) => {
     throw new ApiError(400, 'Goal description is required for analysis');
   }
 
-  // Handle Mock DB Mode
-  if (process.env.MOCK_DB === 'true') {
+  // Handle Mock DB Mode (offline test fallback only)
+  if (process.env.MOCK_DB === 'true' && Goal.db?.readyState !== 1) {
     const mockUserSkills = [
       { name: 'React', level: 'ADVANCED', category: 'Frontend' },
       { name: 'Node.js', level: 'INTERMEDIATE', category: 'Backend' },
@@ -73,8 +73,8 @@ export const createGoal = async (userId, goalData) => {
     throw new ApiError(400, 'Title and description are required to create a goal');
   }
 
-  // Handle Mock DB Mode
-  if (process.env.MOCK_DB === 'true') {
+  // Handle Mock DB Mode (offline test fallback only)
+  if (process.env.MOCK_DB === 'true' && Goal.db?.readyState !== 1) {
     const mockUserSkills = [
       { name: 'React', level: 'ADVANCED', category: 'Frontend' },
       { name: 'Node.js', level: 'INTERMEDIATE', category: 'Backend' },
@@ -142,7 +142,7 @@ export const createGoal = async (userId, goalData) => {
 };
 
 export const getUserGoals = async (userId, statusFilter) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Goal.db?.readyState !== 1) {
     let userMockGoals = mockGoalsStore.filter((g) => g.user === userId.toString());
     if (statusFilter) {
       userMockGoals = userMockGoals.filter((g) => g.status === statusFilter);
@@ -159,7 +159,7 @@ export const getUserGoals = async (userId, statusFilter) => {
 };
 
 export const getGoalById = async (goalId, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Goal.db?.readyState !== 1) {
     const goal = mockGoalsStore.find(
       (g) => g._id === goalId && g.user === userId.toString()
     );
@@ -178,7 +178,7 @@ export const getGoalById = async (goalId, userId) => {
 };
 
 export const updateGoal = async (goalId, userId, updateData) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Goal.db?.readyState !== 1) {
     const goalIndex = mockGoalsStore.findIndex(
       (g) => g._id === goalId && g.user === userId.toString()
     );
@@ -244,7 +244,7 @@ export const updateGoal = async (goalId, userId, updateData) => {
 };
 
 export const deleteGoal = async (goalId, userId) => {
-  if (process.env.MOCK_DB === 'true') {
+  if (process.env.MOCK_DB === 'true' && Goal.db?.readyState !== 1) {
     const goalIndex = mockGoalsStore.findIndex(
       (g) => g._id === goalId && g.user === userId.toString()
     );
