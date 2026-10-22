@@ -57,6 +57,8 @@ export const recordAndSendFeedback = async ({ rating, improvements, newFeatures,
     feedbackId: savedFeedback?._id || 'mock_feedback_' + Date.now(),
     delivered: emailResult.delivered,
     simulated: emailResult.simulated || false,
+    emailPending: Boolean(emailResult.pending),
+    deliveryError: emailResult.error || null,
   };
 };
 

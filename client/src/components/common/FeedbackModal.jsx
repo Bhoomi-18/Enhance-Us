@@ -22,6 +22,7 @@ export const FeedbackModal = ({ isOpen, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [deliveryStatus, setDeliveryStatus] = useState('delivered'); // 'delivered' | 'pending'
 
   const resetForm = () => {
     setRating(5);
@@ -31,6 +32,7 @@ export const FeedbackModal = ({ isOpen, onClose }) => {
     setComments('');
     setErrorMessage(null);
     setIsSuccess(false);
+    setDeliveryStatus('delivered');
   };
 
   const handleClose = () => {
@@ -65,8 +67,13 @@ export const FeedbackModal = ({ isOpen, onClose }) => {
       });
 
       // Verification of backend confirmation
-      if (response?.success || response?.data?.delivered) {
+      if (response?.success) {
         setIsSuccess(true);
+        if (response?.data?.emailPending || response?.data?.delivered === false) {
+          setDeliveryStatus('pending');
+        } else {
+          setDeliveryStatus('delivered');
+        }
       } else {
         throw new Error(response?.message || 'Feedback could not be confirmed by the server.');
       }
@@ -100,7 +107,9 @@ export const FeedbackModal = ({ isOpen, onClose }) => {
               Feedback submitted. Thank you!
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              Your insights have been securely delivered. We review every recommendation to continuously refine EnhanceUs.
+              {deliveryStatus === 'pending'
+                ? 'Your feedback has been saved securely in our database. Email notification to the support team is queued.'
+                : 'Your insights have been securely delivered. We review every recommendation to continuously refine EnhanceUs.'}
             </p>
           </div>
           <div className="pt-4">

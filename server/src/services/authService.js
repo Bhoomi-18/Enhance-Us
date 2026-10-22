@@ -81,19 +81,25 @@ export const registerUser = async (userData) => {
   });
 
   // 4. Send verification email via Plunk (non-blocking failure handles provider hiccups safely)
+  let emailDelivery = { sent: false };
   try {
-    await sendVerificationEmail({
+    const plunkRes = await sendVerificationEmail({
       to: user.email,
       name: user.name,
       verificationToken: rawVerificationToken,
     });
+    emailDelivery = {
+      sent: Boolean(plunkRes.delivered || plunkRes.simulated),
+      simulated: Boolean(plunkRes.simulated),
+    };
   } catch (emailErr) {
-    console.warn(`⚠️ [Signup Email Notice] Verification email could not be sent immediately: ${emailErr.message}`);
+    console.warn(`⚠️ [Signup Email Notice] Verification email could not be sent immediately to [${user.email}]: ${emailErr.message}`);
+    emailDelivery = { sent: false, error: emailErr.message };
   }
 
   const token = generateToken({ id: user._id, email: user.email, name: user.name });
 
-  return { user, token };
+  return { user, token, emailDelivery };
 };
 
 /**
@@ -272,7 +278,7 @@ export const resendVerificationEmail = async (emailInput, currentUser = null) =>
   await user.save();
 
   // Send email via Plunk
-  await sendVerificationEmail({
+  const emailRes = await sendVerificationEmail({
     to: user.email,
     name: user.name,
     verificationToken: rawVerificationToken,
@@ -280,7 +286,11 @@ export const resendVerificationEmail = async (emailInput, currentUser = null) =>
 
   return {
     success: true,
-    message: 'A fresh verification link has been dispatched to your email address.',
+    delivered: Boolean(emailRes.delivered),
+    simulated: Boolean(emailRes.simulated),
+    message: emailRes.simulated
+      ? 'Verification email simulated in non-production environment. Check server logs.'
+      : 'A fresh verification link has been sent to your email address. Please check your inbox.',
   };
 };
 

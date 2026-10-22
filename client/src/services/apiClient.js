@@ -90,19 +90,31 @@ apiClient.interceptors.response.use(
       (error.message && error.message.toLowerCase().includes('timeout'));
     const isNetworkError =
       !error.response && (error.code === 'ERR_NETWORK' || !window.navigator.onLine);
-    const isServerWakingOrUnavailable = [502, 503, 504].includes(error.response?.status);
 
-    let friendlyMessage = error.response?.data?.message || error.message || 'Network error occurred';
+    // Application errors returned by our running Express server contain a structured message string
+    const applicationMessage =
+      typeof error.response?.data?.message === 'string' && error.response.data.message.trim()
+        ? error.response.data.message.trim()
+        : null;
 
-    if (isTimeout) {
-      friendlyMessage =
-        'The server is taking longer than usual to respond. It may be waking up from sleep. Please try again in a few moments.';
-    } else if (isNetworkError) {
-      friendlyMessage =
-        'Unable to connect to EnhanceUs backend. The server may be waking up, or please check your internet connection.';
-    } else if (isServerWakingOrUnavailable) {
-      friendlyMessage =
-        'The server is temporarily starting up. Please refresh or retry in a few moments.';
+    // Genuine server waking occurs when Render/Cloudflare reverse proxy returns 502/503/504
+    // WITHOUT an Express JSON application response
+    const isServerWakingOrUnavailable =
+      [502, 503, 504].includes(error.response?.status) && !applicationMessage;
+
+    let friendlyMessage = applicationMessage || error.message || 'An unexpected error occurred';
+
+    if (!applicationMessage) {
+      if (isTimeout) {
+        friendlyMessage =
+          'The server is taking longer than usual to respond. It may be waking up from sleep. Please try again in a few moments.';
+      } else if (isNetworkError) {
+        friendlyMessage =
+          'Unable to connect to EnhanceUs backend. The server may be waking up, or please check your internet connection.';
+      } else if (isServerWakingOrUnavailable) {
+        friendlyMessage =
+          'The server is temporarily starting up. Please refresh or retry in a few moments.';
+      }
     }
 
     const method = (error.config?.method || 'get').toLowerCase();
@@ -111,11 +123,13 @@ apiClient.interceptors.response.use(
     const formattedError = {
       message: friendlyMessage,
       statusCode: error.response?.status || (isTimeout ? 408 : 0),
+      data: error.response?.data || null,
       details: error.response?.data?.errors || null,
+      response: error.response,
       isTimeout,
       isNetworkError,
       isServerWakingOrUnavailable,
-      isRetryable: isReadOnly, // Safe retry only permitted for idempotent read operations
+      isRetryable: isReadOnly && !applicationMessage, // Retry only idempotent network/cold-start failures
       raw: error,
     };
 

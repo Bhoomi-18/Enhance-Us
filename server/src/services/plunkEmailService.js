@@ -32,70 +32,137 @@ export const getFrontendBaseUrl = () => {
  * Checks whether transactional emails should be simulated in test/placeholder environments.
  */
 const shouldSimulateEmail = () => {
-  const key = process.env.PLUNK_API_KEY;
-  return (
-    !key ||
-    key === 'your_plunk_api_key_here' ||
-    key === 'placeholder' ||
-    process.env.NODE_ENV === 'test' ||
-    process.env.MOCK_EMAIL === 'true'
-  );
+  if (process.env.NODE_ENV === 'test' || process.env.MOCK_EMAIL === 'true') {
+    return true;
+  }
+  const key = (process.env.PLUNK_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+  // Only simulate in local development when key is omitted or placeholder
+  if (process.env.NODE_ENV !== 'production' && (!key || key.startsWith('your_plunk') || key === 'placeholder')) {
+    return true;
+  }
+  return false;
 };
 
 /**
  * Base method to dispatch transactional emails through Plunk's REST API.
+ * Uses Plunk Cloud's active production endpoint (https://next-api.useplunk.com/v1/send)
+ * with automatic fallback to https://api.useplunk.com/v1/send.
  */
 export const sendPlunkEmail = async ({ to, subject, body, name = 'EnhanceUs', from = null }) => {
-  const recipient = Array.isArray(to) ? to : [to];
-  const apiKey = process.env.PLUNK_API_KEY;
-  const fromEmail = from || process.env.PLUNK_FROM_EMAIL || 'no-reply@briefenai.me';
+  const recipient = Array.isArray(to) ? (to.length === 1 ? to[0] : to) : to;
+  const rawKey = process.env.PLUNK_API_KEY || '';
+  const apiKey = rawKey.trim().replace(/^['"]|['"]$/g, '').replace(/^Bearer\s+/i, '');
+  const fromEmail = (from || process.env.PLUNK_FROM_EMAIL || 'no-reply@briefenai.me')
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
 
   if (shouldSimulateEmail()) {
-    console.log(`📧 [Plunk Simulation] Email simulated to [${recipient.join(', ')}] with subject: "${subject}"`);
-    return { success: true, simulated: true, to: recipient, subject };
+    console.log(`📧 [Plunk Simulation] Email simulated to [${Array.isArray(recipient) ? recipient.join(', ') : recipient}] with subject: "${subject}"`);
+    return { success: true, simulated: true, delivered: false, to: recipient, subject };
   }
 
-  try {
-    const payload = {
-      to: recipient.length === 1 ? recipient[0] : recipient,
-      subject,
-      body,
-      name,
-    };
+  // Production check: ensure secret key is configured and not a public key
+  if (!apiKey || apiKey === 'placeholder' || apiKey.startsWith('your_plunk')) {
+    console.error('❌ [Plunk Config Error] PLUNK_API_KEY is not configured in Render environment variables.');
+    throw new ApiError(503, 'Email service is currently unconfigured. Please configure PLUNK_API_KEY in Render.');
+  }
 
-    if (fromEmail) {
-      payload.from = fromEmail;
-    }
+  if (apiKey.startsWith('pk_')) {
+    console.error('❌ [Plunk Key Error] PLUNK_API_KEY is configured with a Public Key (pk_*). Plunk transactional email sending requires a Secret Key (sk_*).');
+    throw new ApiError(503, 'Email service configuration error: A Plunk secret key (sk_*) is required on the backend, not a public key.');
+  }
 
-    const response = await fetch('https://api.useplunk.com/v1/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
+  const payload = {
+    to: recipient,
+    subject,
+    body,
+    name,
+    fromName: name,
+  };
 
-    if (!response.ok) {
-      const errText = await response.text();
-      let errJson = null;
-      try {
-        errJson = JSON.parse(errText);
-      } catch (e) {
-        // Raw text
+  if (fromEmail) {
+    payload.from = fromEmail;
+  }
+
+  const endpoints = [
+    'https://next-api.useplunk.com/v1/send',
+    'https://api.useplunk.com/v1/send',
+  ];
+
+  let lastError = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        let errJson = null;
+        try {
+          errJson = JSON.parse(errText);
+        } catch (e) {
+          // Non-JSON response
+        }
+
+        let detailedMessage = '';
+        if (errJson) {
+          if (errJson.error?.errors && Array.isArray(errJson.error.errors) && errJson.error.errors.length > 0) {
+            detailedMessage = errJson.error.errors.map((e) => `${e.field || ''}: ${e.message}`).join(', ');
+          } else if (errJson.error?.message) {
+            detailedMessage = errJson.error.message;
+            if (errJson.error.suggestion) {
+              detailedMessage += ` (${errJson.error.suggestion})`;
+            }
+          } else if (errJson.message) {
+            detailedMessage = errJson.message;
+          } else if (typeof errJson.error === 'string') {
+            detailedMessage = errJson.error;
+          }
+        }
+
+        const logMsg = detailedMessage || errText || `HTTP ${response.status}`;
+        console.error(`⚠️ [Plunk Email Error] (${response.status}) Delivery to [${Array.isArray(recipient) ? recipient.join(', ') : recipient}] failed:`, logMsg);
+
+        let userMessage = 'Email provider failed to deliver message.';
+        if (response.status === 401) {
+          userMessage = 'Email service authentication failed. Please verify that PLUNK_API_KEY is a valid secret key (sk_*) in Render.';
+        } else if (response.status === 422) {
+          userMessage = `Email provider validation failed: ${detailedMessage || 'Domain or sender address not permitted'}.`;
+        } else if (response.status === 429) {
+          userMessage = 'Email provider rate limit reached. Please wait a moment before retrying.';
+        } else if (detailedMessage) {
+          userMessage = `Email delivery failed: ${detailedMessage}`;
+        }
+
+        throw new ApiError(502, userMessage, { providerStatus: response.status });
       }
-      const errMsg = errJson?.message || errText || `HTTP ${response.status}`;
-      console.error(`⚠️ [Plunk Email Error] Delivery to [${recipient.join(', ')}] failed:`, errMsg);
-      throw new ApiError(502, `Failed to dispatch transactional email via Plunk: ${errMsg}`);
-    }
 
-    const data = await response.json();
-    return { success: true, delivered: true, data };
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    console.error('⚠️ [Plunk Network Error]:', err.message);
-    throw new ApiError(502, 'Failed to connect to Plunk transactional email provider.');
+      const data = await response.json();
+      return {
+        success: true,
+        delivered: true,
+        accepted: true,
+        data: data?.data || data,
+      };
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // If it's a 4xx error from Plunk, trying the second endpoint won't help
+        throw err;
+      }
+      lastError = err;
+      console.warn(`⚠️ [Plunk Failover] Endpoint ${endpoint} failed (${err.message}). Trying fallback endpoint...`);
+    }
   }
+
+  console.error('⚠️ [Plunk Network Error] All Plunk API endpoints failed:', lastError?.message);
+  throw new ApiError(502, 'Failed to connect to Plunk transactional email provider.');
 };
 
 /**

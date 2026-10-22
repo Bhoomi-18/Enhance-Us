@@ -155,6 +155,36 @@ async function runAuthAndEmailSuite() {
     assert(userDocInDb && userDocInDb.verificationTokenHash, 'Cryptographic verification token hash safely stored in MongoDB');
     assert(userDocInDb.verificationTokenExpires > new Date(), 'Verification token has valid expiration timestamp');
 
+    // Test Resend Verification Workflow before verification
+    const resendMissingEmailRes = await request('/auth/resend-verification', 'POST', {});
+    assert(resendMissingEmailRes.status === 400, 'Resend verification rejects missing email with 400');
+
+    const resendNonExistentRes = await request('/auth/resend-verification', 'POST', {
+      email: `nonexistent_user_${ts}@briefenai.me`,
+    });
+    assert(
+      resendNonExistentRes.status === 200 &&
+        resendNonExistentRes.data?.message?.includes('If an unverified account'),
+      'Resend verification returns generic anti-enumeration response for non-existent email'
+    );
+
+    const resendValidRes = await request('/auth/resend-verification', 'POST', {
+      email: realUserEmail,
+    });
+    assert(
+      resendValidRes.status === 200 &&
+        (resendValidRes.data?.data?.delivered || resendValidRes.data?.data?.simulated),
+      'Resend verification succeeds for unverified user (200) without crashing'
+    );
+
+    const userDocAfterResend = await User.findOne({ email: realUserEmail }).select(
+      '+verificationTokenHash +verificationTokenExpires'
+    );
+    assert(
+      userDocAfterResend && userDocAfterResend.verificationTokenHash,
+      'Resend verification generates and persists fresh token hash in MongoDB'
+    );
+
     // Manually set a known raw token & hash for testing verification endpoint
     import('crypto').then(async (crypto) => {
       const testRawToken = 'test_raw_verification_token_' + ts;
@@ -174,6 +204,16 @@ async function runAuthAndEmailSuite() {
         token: testRawToken,
       });
       assert(reuseTokenRes.status === 400, 'Reused verification token is safely rejected (400)');
+
+      // Test Resend Verification when already verified
+      const resendAlreadyVerifiedRes = await request('/auth/resend-verification', 'POST', {
+        email: realUserEmail,
+      });
+      assert(
+        resendAlreadyVerifiedRes.status === 200 &&
+          resendAlreadyVerifiedRes.data?.message?.includes('already verified'),
+        'Resend verification informs user that account is already verified'
+      );
 
       // Verify in DB that account is verified and token hash is cleared
       const updatedUserDoc = await User.findById(realUserId);
