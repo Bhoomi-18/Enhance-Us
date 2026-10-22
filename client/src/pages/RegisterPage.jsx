@@ -151,7 +151,12 @@ export const RegisterPage = () => {
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="text-center">
+            <img
+              src="/favicon.png"
+              alt="EnhanceUs Logo"
+              className="w-14 h-14 mx-auto mb-3 rounded-2xl object-contain shadow-sm"
+            />
             <CardTitle>
               {step === 1 && 'Create Your EnhanceUs Account'}
               {step === 2 && 'Tell Us About Yourself (Optional)'}

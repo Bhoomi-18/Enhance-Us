@@ -3,7 +3,6 @@ import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Target,
   Users,
-  Compass,
   MessageSquare,
   User,
   Settings,
@@ -145,9 +144,11 @@ export const Navbar = () => {
             {/* Logo & Platform Identity */}
             <div className="flex items-center gap-6">
               <Link to="/" className="flex items-center gap-2.5 group">
-                <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-extrabold shadow-sm group-hover:bg-teal-700 transition-colors">
-                  <Compass className="w-5 h-5 text-white" />
-                </div>
+                <img
+                  src="/favicon.png"
+                  alt="EnhanceUs Logo"
+                  className="w-9 h-9 rounded-xl object-contain shadow-sm group-hover:scale-105 transition-transform"
+                />
                 <div className="flex flex-col">
                   <span className="font-extrabold text-lg text-slate-900 dark:text-slate-100 leading-none tracking-tight">
                     Enhance<span className="text-teal-600 dark:text-teal-400">Us</span>

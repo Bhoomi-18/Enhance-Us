@@ -61,9 +61,11 @@ export const LoginPage = () => {
       <div className="max-w-md mx-auto py-8">
         <Card>
           <CardHeader className="text-center">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center">
-              <LogIn className="w-6 h-6" />
-            </div>
+            <img
+              src="/favicon.png"
+              alt="EnhanceUs Logo"
+              className="w-14 h-14 mx-auto mb-3 rounded-2xl object-contain shadow-sm"
+            />
             <CardTitle>Welcome Back to EnhanceUs</CardTitle>
             <CardDescription>Log in to access your active goals and peer matches</CardDescription>
           </CardHeader>

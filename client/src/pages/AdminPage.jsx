@@ -35,9 +35,7 @@ export const AdminPage = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold shadow-lg shadow-teal-600/20">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
+            <img src="/favicon.png" alt="EnhanceUs Logo" className="w-12 h-12 rounded-2xl object-contain shadow-md" />
             <div>
               <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                 EnhanceUs Admin Portal

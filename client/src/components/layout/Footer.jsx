@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Compass, MessageSquarePlus, ExternalLink, Mail } from 'lucide-react';
+import { MessageSquarePlus, ExternalLink, Mail } from 'lucide-react';
 import FeedbackModal from '../common/FeedbackModal';
 import { GOOGLE_FEEDBACK_FORM_URL } from '../../services/feedbackService';
 
@@ -37,9 +37,7 @@ export const Footer = () => {
         {/* Top Header / Contact Us Section */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800/80 mb-6">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-teal-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-              <Compass className="w-3.5 h-3.5" />
-            </div>
+            <img src="/favicon.png" alt="EnhanceUs Logo" className="w-6 h-6 rounded-lg object-contain shadow-sm" />
             <span className="font-bold text-sm text-slate-800 dark:text-slate-200">EnhanceUs</span>
             <span className="text-xs text-slate-400 dark:text-slate-500">| Goal-Driven Skill Exchange</span>
           </div>

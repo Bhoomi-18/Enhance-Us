@@ -192,9 +192,17 @@ export const OnboardingTourModal = ({ isOpen, onClose }) => {
         {/* Modal Body */}
         <div className="px-6 py-4 flex-1">
           <div className="flex items-center gap-3.5 mb-4">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${current.color}`}>
-              <StepIcon className="w-6 h-6" />
-            </div>
+            {currentStep === 0 ? (
+              <img
+                src="/favicon.png"
+                alt="EnhanceUs Logo"
+                className="w-12 h-12 rounded-2xl object-contain shadow-sm border border-teal-200 dark:border-teal-800"
+              />
+            ) : (
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${current.color}`}>
+                <StepIcon className="w-6 h-6" />
+              </div>
+            )}
             <div>
               <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 leading-tight">{current.title}</h3>
               <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">{current.subtitle}</p>

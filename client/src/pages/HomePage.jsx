@@ -177,9 +177,11 @@ export const HomePage = () => {
             {/* The EnhanceUs Approach */}
             <Card className="border-teal-200/80 dark:border-teal-900/60 bg-gradient-to-br from-white to-teal-50/30 dark:from-slate-900 dark:to-teal-950/20 flex flex-col justify-between">
               <div>
-                <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 flex items-center justify-center mb-4">
-                  <Sparkles className="w-5 h-5" />
-                </div>
+                <img
+                  src="/favicon.png"
+                  alt="EnhanceUs Logo"
+                  className="w-10 h-10 rounded-xl object-contain mb-4 shadow-sm"
+                />
                 <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-3">The EnhanceUs Approach</h3>
                 <ul className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
                   <li className="flex items-start gap-2.5">

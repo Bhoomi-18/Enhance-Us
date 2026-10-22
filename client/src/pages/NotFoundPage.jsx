@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Compass, Home } from 'lucide-react';
+import { Home } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Button from '../components/ui/Button';
 
@@ -8,8 +8,8 @@ export const NotFoundPage = () => {
   return (
     <PageContainer>
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
-        <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-4">
-          <Compass className="w-8 h-8 animate-bounce" />
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4">
+          <img src="/favicon.png" alt="EnhanceUs Logo" className="w-16 h-16 rounded-2xl object-contain shadow-sm animate-bounce" />
         </div>
         <h1 className="text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight mb-2">404</h1>
         <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-2">Page Not Found</h2>
