@@ -33,22 +33,24 @@ export const createExchangeRequest = async (senderId, requestData) => {
   }
 
   // Check for duplicate pending request
-  const existing = await ExchangeRequest.findOne({
+  const duplicateQuery = {
     sender: senderId,
     recipient: recipientId,
-    goal: goalId,
     status: 'PENDING',
-  });
+  };
+  if (goalId) duplicateQuery.goal = goalId;
+
+  const existing = await ExchangeRequest.findOne(duplicateQuery);
 
   if (existing) {
-    throw new ApiError(400, 'An exchange request is already pending with this peer for this goal');
+    throw new ApiError(400, 'An exchange request is already pending with this peer');
   }
 
   const exchangeRequest = await ExchangeRequest.create({
     sender: senderId,
     recipient: recipientId,
-    goal: goalId,
-    match: matchId,
+    goal: goalId || null,
+    match: matchId || null,
     offeredSkill,
     requestedSkill,
     proposedExchange: proposedExchange || `I'd like to exchange ${offeredSkill} for ${requestedSkill}.`,
@@ -140,7 +142,7 @@ export const acceptExchangeRequest = async (requestId, userId) => {
   // Create Connection record
   const connection = await Connection.create({
     participants: [request.sender, request.recipient],
-    goal: request.goal,
+    goal: request.goal || null,
     exchangeRequest: request._id,
     skills: {
       userASkill: request.offeredSkill,

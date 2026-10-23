@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import SkillSelector from '../components/ui/SkillSelector';
+import PortfolioSection from '../components/portfolio/PortfolioSection';
 import { useAuth } from '../context/AuthContext';
 import { getPublicProfile, updateProfile } from '../services/userService';
 import { getUserReviews } from '../services/reviewService';
@@ -230,6 +231,15 @@ export const ProfilePage = () => {
           </Card>
 
         </div>
+      </div>
+
+      {/* Proof-of-Skill Portfolio Matrix */}
+      <div className="mb-8">
+        <PortfolioSection
+          targetUserId={userToDisplay?._id}
+          isOwner={isSelf}
+          userSkills={userToDisplay?.skills || []}
+        />
       </div>
 
       {/* Edit Profile Modal */}

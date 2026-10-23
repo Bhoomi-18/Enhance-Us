@@ -55,6 +55,7 @@ import Skeleton from '../components/ui/Skeleton';
 import Modal from '../components/ui/Modal';
 import LearningAssistantPanel from '../components/assistant/LearningAssistantPanel';
 import CuratedResourcesList from '../components/resources/CuratedResourcesList';
+import { createFromMilestone } from '../services/portfolioService';
 
 export const RoadmapDetailPage = () => {
   const { id } = useParams();
@@ -108,6 +109,13 @@ export const RoadmapDetailPage = () => {
   // Deletion modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Portfolio Claim Modal state
+  const [portfolioModalMilestone, setPortfolioModalMilestone] = useState(null);
+  const [portfolioEvidenceUrl, setPortfolioEvidenceUrl] = useState('');
+  const [portfolioVisibility, setPortfolioVisibility] = useState('PUBLIC');
+  const [isClaimingPortfolio, setIsClaimingPortfolio] = useState(false);
+  const [portfolioSuccessMsg, setPortfolioSuccessMsg] = useState(null);
 
   const fetchRoadmap = async (keepTab = false) => {
     try {
@@ -293,6 +301,31 @@ export const RoadmapDetailPage = () => {
       setBreakdownError(err.response?.data?.message || err.message || 'Failed to apply adaptive breakdown.');
     } finally {
       setIsApplyingBreakdown(false);
+    }
+  };
+
+  // Claim Completed Milestone into Portfolio
+  const handleClaimPortfolio = async (e) => {
+    e.preventDefault();
+    if (!portfolioModalMilestone) return;
+    try {
+      setIsClaimingPortfolio(true);
+      await createFromMilestone({
+        roadmapId: id,
+        milestoneId: portfolioModalMilestone.milestoneId,
+        evidenceUrl: portfolioEvidenceUrl.trim(),
+        visibility: portfolioVisibility,
+      });
+      setPortfolioSuccessMsg('Milestone successfully verified and added to your Proof-of-Skill Portfolio!');
+      setTimeout(() => {
+        setPortfolioSuccessMsg(null);
+        setPortfolioModalMilestone(null);
+        setPortfolioEvidenceUrl('');
+      }, 1800);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to claim milestone into portfolio');
+    } finally {
+      setIsClaimingPortfolio(false);
     }
   };
 
@@ -1253,16 +1286,32 @@ export const RoadmapDetailPage = () => {
 
                             {/* COMPLETED Actions */}
                             {isCompleted && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={isUpdating}
-                                onClick={() => handleMilestoneAction(milestone.milestoneId, 'REOPEN')}
-                                className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                                Reopen Milestone
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isUpdating}
+                                  onClick={() => handleMilestoneAction(milestone.milestoneId, 'REOPEN')}
+                                  className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                  Reopen Milestone
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setPortfolioModalMilestone(milestone);
+                                    setPortfolioEvidenceUrl('');
+                                    setPortfolioVisibility('PUBLIC');
+                                  }}
+                                  className="text-xs font-bold text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-700/80 hover:bg-teal-50 dark:hover:bg-teal-950/40"
+                                >
+                                  <Award className="w-3.5 h-3.5 mr-1 text-teal-600 dark:text-teal-400" />
+                                  Claim as Portfolio Evidence
+                                </Button>
+                              </>
                             )}
 
                             {/* Add/Edit Note Button */}
@@ -2077,6 +2126,86 @@ export const RoadmapDetailPage = () => {
               </div>
             )}
           </div>
+        </Modal>
+
+        {/* Claim Milestone to Portfolio Modal */}
+        <Modal
+          isOpen={!!portfolioModalMilestone}
+          onClose={() => !isClaimingPortfolio && setPortfolioModalMilestone(null)}
+          title="Claim Milestone as Proof-of-Skill"
+          description="Publish this completed roadmap milestone to your public or members-only portfolio blueprint."
+          className="max-w-md"
+        >
+          {portfolioSuccessMsg ? (
+            <div className="py-6 text-center space-y-3">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto animate-bounce" />
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">{portfolioSuccessMsg}</h4>
+            </div>
+          ) : (
+            <form onSubmit={handleClaimPortfolio} className="space-y-4 mt-2 text-xs">
+              <div className="p-3 bg-teal-50 dark:bg-teal-950/40 rounded-xl border border-teal-200 dark:border-teal-800/60">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 block mb-1">
+                  Mastered Skill & Milestone
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 block">
+                  {portfolioModalMilestone?.title}
+                </strong>
+                <span className="text-[11px] text-teal-600 dark:text-teal-400">
+                  Domain: {portfolioModalMilestone?.skillName || 'General'}
+                </span>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  External Artifact / Evidence URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://github.com/username/project or live demo"
+                  value={portfolioEvidenceUrl}
+                  onChange={(e) => setPortfolioEvidenceUrl(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-400 block mt-1">
+                  Providing a link advances this artifact to <strong>Evidence-Backed</strong> status.
+                </span>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Portfolio Visibility
+                </label>
+                <select
+                  value={portfolioVisibility}
+                  onChange={(e) => setPortfolioVisibility(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+                  <option value="PUBLIC">Public — Visible to anyone viewing your profile</option>
+                  <option value="MEMBERS_ONLY">Members Only — Visible to authenticated peers</option>
+                  <option value="PRIVATE">Private — Only visible to you</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isClaimingPortfolio}
+                  onClick={() => setPortfolioModalMilestone(null)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isClaimingPortfolio}
+                  className="text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white"
+                >
+                  {isClaimingPortfolio ? 'Adding...' : 'Add to Portfolio'}
+                </Button>
+              </div>
+            </form>
+          )}
         </Modal>
 
         {/* Delete Confirmation Modal */}

@@ -16,6 +16,8 @@ import feedbackRoutes from './feedbackRoutes.js';
 import resourceRoutes from './resourceRoutes.js';
 import assistantRoutes from './assistantRoutes.js';
 import adminRoutes from './adminRoutes.js';
+import portfolioRoutes from './portfolioRoutes.js';
+import circleRoutes from './circleRoutes.js';
 
 const router = Router();
 
@@ -24,6 +26,8 @@ router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
+router.use('/circles', circleRoutes);
+router.use('/portfolio', portfolioRoutes);
 router.use('/skills', skillRoutes);
 router.use('/goals', goalRoutes);
 router.use('/roadmaps', roadmapRoutes);

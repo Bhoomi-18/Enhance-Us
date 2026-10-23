@@ -17,7 +17,7 @@ const exchangeRequestSchema = new mongoose.Schema(
     goal: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Goal',
-      required: true,
+      required: false,
     },
     match: {
       type: mongoose.Schema.Types.ObjectId,

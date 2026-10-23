@@ -1,152 +1,253 @@
 import User from '../models/userModel.js';
 import Goal from '../models/goalModel.js';
 import Match from '../models/matchModel.js';
+import Connection from '../models/connectionModel.js';
 import { ApiError } from '../utils/apiError.js';
+import {
+  normalizeSkillName,
+  areSkillsCompatible,
+  calculateProficiencyCompatibility,
+} from '../utils/skillNormalizer.js';
 
-// Configurable Scoring Weight Constants (Must total 100)
+/**
+ * Intelligent Explainable Scoring Weights (Total: 100)
+ */
 export const MATCH_WEIGHTS = {
-  SKILL_NEED_MATCH: 40,
-  RECIPROCAL_MATCH: 25,
-  AVAILABILITY: 15,
-  PROFICIENCY_COMPATIBILITY: 10,
-  LEARNING_STYLE: 5,
-  LANGUAGE: 5,
+  RECIPROCAL_FIT: 40,      // Bilateral teaching-learning reciprocity
+  SKILL_NEED_COVERAGE: 30, // How well candidate addresses user's learning gaps / interests
+  AVAILABILITY: 15,        // Schedule compatibility
+  PROFICIENCY: 10,         // Appropriate teaching/experience level
+  RELIABILITY: 5,          // Community reputation & completion history (newcomer safe)
 };
 
-export const calculateMatchScore = (user, candidate, goal) => {
+/**
+ * Evaluates match compatibility between a user and candidate peer.
+ * Works both with a specific goal and directly with profile skills & interests.
+ */
+export const calculateMatchScore = (user, candidate, goal = null) => {
   const explanation = [];
   const matchedSkills = [];
   const reciprocalSkills = [];
 
-  let skillNeedScore = 0;
-  let reciprocalScore = 0;
+  let reciprocityScore = 0;
+  let needScore = 0;
   let availabilityScore = 0;
   let proficiencyScore = 0;
-  let styleScore = 0;
-  let languageScore = 0;
+  let reliabilityScore = 0;
 
-  // Extract missing & required skills for the goal
-  const missingGaps = goal.skillGaps?.missingSkills || [];
-  const requiredSkills = goal.requiredSkills || [];
+  // 1. Determine user's learning needs (Goal gaps prioritized, falling back to profile learningInterests)
+  let userNeeds = [];
+  if (goal) {
+    const gaps = goal.skillGaps?.missingSkills || [];
+    if (gaps.length > 0) {
+      userNeeds = gaps.map((g) => ({
+        name: normalizeSkillName(g.name),
+        rawName: g.name,
+        targetLevel: g.requiredLevel || 'INTERMEDIATE',
+        isGoalGap: true,
+      }));
+    } else if (goal.requiredSkills && goal.requiredSkills.length > 0) {
+      userNeeds = goal.requiredSkills.map((r) => ({
+        name: normalizeSkillName(r.name),
+        rawName: r.name,
+        targetLevel: r.level || 'INTERMEDIATE',
+        isGoalGap: false,
+      }));
+    }
+  }
 
-  const candidateTeachSkills = (candidate.skills || []).filter(
-    (s) => !s.type || s.type === 'TEACH' || s.type === 'both'
-  );
+  // Fallback or complement with profile learning interests
+  if (userNeeds.length === 0 && user.learningInterests && user.learningInterests.length > 0) {
+    userNeeds = user.learningInterests.map((interest) => ({
+      name: normalizeSkillName(interest.name),
+      rawName: interest.name,
+      targetLevel: 'INTERMEDIATE',
+      isGoalGap: false,
+    }));
+  }
 
-  const candidateLearnSkills = candidate.learningInterests || [];
-  const userTeachSkills = (user.skills || []).filter(
-    (s) => !s.type || s.type === 'TEACH' || s.type === 'both'
-  );
+  // 2. Candidate's teaching skills
+  const candidateTeachSkills = (candidate.skills || [])
+    .filter((s) => !s.type || s.type === 'TEACH' || s.type === 'both')
+    .map((s) => ({
+      name: normalizeSkillName(s.name),
+      rawName: s.name,
+      level: s.level || 'INTERMEDIATE',
+      category: s.category || 'General',
+    }));
 
-  // 1. Skill Need Match (40% Weight)
-  missingGaps.forEach((gap) => {
-    const matchedCandidateSkill = candidateTeachSkills.find(
-      (cs) => cs.name && cs.name.toLowerCase().includes(gap.name.toLowerCase()) || gap.name.toLowerCase().includes(cs.name.toLowerCase())
+  // 3. User's teaching skills
+  const userTeachSkills = (user.skills || [])
+    .filter((s) => !s.type || s.type === 'TEACH' || s.type === 'both')
+    .map((s) => ({
+      name: normalizeSkillName(s.name),
+      rawName: s.name,
+      level: s.level || 'INTERMEDIATE',
+      category: s.category || 'General',
+    }));
+
+  // 4. Candidate's learning interests
+  const candidateLearnInterests = (candidate.learningInterests || []).map((i) => ({
+    name: normalizeSkillName(i.name),
+    rawName: i.name,
+    priority: i.priority || 'HIGH',
+  }));
+
+  // ==========================================
+  // A. SKILL NEED COVERAGE (What candidate teaches that user needs)
+  // ==========================================
+  userNeeds.forEach((need) => {
+    const matchedCandidateSkill = candidateTeachSkills.find((cs) =>
+      areSkillsCompatible(cs.name, need.name)
     );
     if (matchedCandidateSkill) {
       matchedSkills.push({
-        needSkill: gap.name,
+        needSkill: need.name,
         candidateTeachSkill: matchedCandidateSkill.name,
+        level: matchedCandidateSkill.level,
       });
     }
   });
 
   if (matchedSkills.length > 0) {
-    skillNeedScore = Math.min(100, (matchedSkills.length / Math.max(1, missingGaps.length)) * 100);
-    explanation.push(
-      `✓ They teach ${matchedSkills.map((m) => m.candidateTeachSkill).join(', ')}, which you need for your goal`
-    );
-  } else {
-    // Check general required skills
-    requiredSkills.forEach((req) => {
-      const matched = candidateTeachSkills.find((cs) => cs.name && cs.name.toLowerCase().includes(req.name.toLowerCase()));
-      if (matched) {
-        matchedSkills.push({ needSkill: req.name, candidateTeachSkill: matched.name });
-      }
-    });
-    if (matchedSkills.length > 0) {
-      skillNeedScore = 70;
-      explanation.push(`✓ They offer ${matchedSkills.map((m) => m.candidateTeachSkill).join(', ')} related to your goal`);
+    const coverageRatio = Math.min(1, matchedSkills.length / Math.max(1, userNeeds.length));
+    needScore = Math.round(coverageRatio * 100);
+    const skillList = matchedSkills.map((m) => m.candidateTeachSkill).join(', ');
+    if (goal) {
+      explanation.push(`✓ They teach ${skillList}, directly resolving your goal blueprint requirements`);
+    } else {
+      explanation.push(`✓ They teach ${skillList}, which aligns with your learning interests`);
     }
   }
 
-  // 2. Reciprocal Match (25% Weight)
-  candidateLearnSkills.forEach((interest) => {
-    const userOffer = userTeachSkills.find(
-      (us) => us.name && us.name.toLowerCase().includes(interest.name.toLowerCase()) || interest.name.toLowerCase().includes(us.name.toLowerCase())
+  // ==========================================
+  // B. RECIPROCITY FIT (What user teaches that candidate wants)
+  // ==========================================
+  candidateLearnInterests.forEach((interest) => {
+    const matchedUserSkill = userTeachSkills.find((us) =>
+      areSkillsCompatible(us.name, interest.name)
     );
-    if (userOffer) {
+    if (matchedUserSkill) {
       reciprocalSkills.push({
         candidateLearnSkill: interest.name,
-        userTeachSkill: userOffer.name,
+        userTeachSkill: matchedUserSkill.name,
+        level: matchedUserSkill.level,
       });
     }
   });
 
   if (reciprocalSkills.length > 0) {
-    reciprocalScore = 100;
-    explanation.push(
-      `✓ You teach ${reciprocalSkills.map((r) => r.userTeachSkill).join(', ')}, which they want to learn`
-    );
+    reciprocityScore = 100;
+    const recipList = reciprocalSkills.map((r) => r.userTeachSkill).join(', ');
+    explanation.push(`✓ You teach ${recipList}, fulfilling their stated learning goals`);
+  } else {
+    reciprocityScore = 0;
   }
 
-  // 3. Availability Compatibility (15% Weight)
-  const userAvail = user.availability || 'flexible';
-  const candAvail = candidate.availability || 'flexible';
-  const availabilityMatch = userAvail === 'flexible' || candAvail === 'flexible' || userAvail === candAvail;
+  // Determine Match Type
+  const isReciprocal = matchedSkills.length > 0 && reciprocalSkills.length > 0;
+  const matchType = isReciprocal ? 'RECIPROCAL_EXCHANGE' : 'PARTIAL_MATCH';
 
-  if (availabilityMatch) {
+  if (isReciprocal) {
+    explanation.push(`✓ Reciprocal exchange synergy: balanced 2-way knowledge transfer where both peers gain valuable skills`);
+  } else {
+    if (matchedSkills.length > 0) {
+      explanation.push(`ℹ Partial match: Peer can teach you, but reciprocal exchange topic is open for negotiation`);
+    } else if (reciprocalSkills.length > 0) {
+      explanation.push(`ℹ Partial match: You can mentor this peer, but their skills don't currently match your target goal`);
+    }
+  }
+
+  // ==========================================
+  // C. AVAILABILITY & TIMEZONE COMPATIBILITY
+  // ==========================================
+  const userAvail = (user.availability || 'flexible').toLowerCase();
+  const candAvail = (candidate.availability || 'flexible').toLowerCase();
+  const isAvailCompatible =
+    userAvail === 'flexible' || candAvail === 'flexible' || userAvail === candAvail;
+
+  if (isAvailCompatible) {
     availabilityScore = 100;
-    explanation.push(`✓ Schedule alignment (${candAvail} availability overlaps)`);
-  }
-
-  // 4. Proficiency Compatibility (10% Weight)
-  const userExp = (user.experienceLevel || 'INTERMEDIATE').toUpperCase();
-  const candExp = (candidate.experienceLevel || 'INTERMEDIATE').toUpperCase();
-  if (userExp === candExp) {
-    proficiencyScore = 100;
-    explanation.push(`✓ Compatible experience level (${candExp.toLowerCase()})`);
+    explanation.push(`✓ Compatible collaboration schedule (${candAvail} availability overlaps)`);
   } else {
-    proficiencyScore = 60;
+    availabilityScore = 40;
   }
 
-  // 5. Preferred Learning Style (5% Weight)
-  if (user.preferredLearningStyle && candidate.preferredLearningStyle && user.preferredLearningStyle === candidate.preferredLearningStyle) {
-    styleScore = 100;
-    explanation.push(`✓ Shared learning style preference (${user.preferredLearningStyle.replace('_', ' ')})`);
+  // ==========================================
+  // D. PROFICIENCY COMPATIBILITY
+  // ==========================================
+  let levelCompatAccum = 0;
+  let levelCompatCount = 0;
+
+  matchedSkills.forEach((ms) => {
+    const correspondingNeed = userNeeds.find((n) => areSkillsCompatible(n.name, ms.needSkill));
+    const targetLevel = correspondingNeed?.targetLevel || 'INTERMEDIATE';
+    levelCompatAccum += calculateProficiencyCompatibility(ms.level, targetLevel);
+    levelCompatCount++;
+  });
+
+  if (levelCompatCount > 0) {
+    proficiencyScore = Math.round(levelCompatAccum / levelCompatCount);
+    explanation.push(`✓ Experienced instructor level for your required learning depth`);
   } else {
-    styleScore = 50;
+    const userExp = (user.experienceLevel || 'INTERMEDIATE').toUpperCase();
+    const candExp = (candidate.experienceLevel || 'INTERMEDIATE').toUpperCase();
+    proficiencyScore = userExp === candExp ? 85 : 65;
   }
 
-  // 6. Language Compatibility (5% Weight)
-  const userLangs = user.languages || ['English'];
-  const candLangs = candidate.languages || ['English'];
-  const hasSharedLang = userLangs.some((l) => candLangs.includes(l));
-  if (hasSharedLang) {
-    languageScore = 100;
-    explanation.push(`✓ Shared language (${candLangs.join(', ')})`);
+  // ==========================================
+  // E. RELIABILITY & REPUTATION (Safe for newcomers)
+  // ==========================================
+  const candReputation = candidate.reputation || { averageRating: 5.0, reviewCount: 0 };
+  const rating = candReputation.averageRating != null ? candReputation.averageRating : 5.0;
+  const reviews = candReputation.reviewCount || 0;
+  const completed = candidate.sessionsCompleted || 0;
+
+  // Base score from rating (out of 5 -> 0 to 100)
+  reliabilityScore = Math.round((Math.min(5, Math.max(1, rating)) / 5) * 100);
+
+  // Newcomers with 0 reviews start with fair baseline (90/100)
+  if (reviews === 0 && completed === 0) {
+    reliabilityScore = 90;
+    explanation.push(`✓ Verified newcomer ready for initial knowledge exchange`);
+  } else if (reviews > 0) {
+    explanation.push(`✓ Established community trust (${rating.toFixed(1)}★ across ${reviews} peer reviews)`);
   }
 
-  // Calculate Weighted Score
-  const overallScore = Math.round(
-    (skillNeedScore * MATCH_WEIGHTS.SKILL_NEED_MATCH +
-      reciprocalScore * MATCH_WEIGHTS.RECIPROCAL_MATCH +
+  // ==========================================
+  // F. WEIGHTED COMPOSITE SCORE CALCULATION
+  // ==========================================
+  const rawScore =
+    (reciprocityScore * MATCH_WEIGHTS.RECIPROCAL_FIT +
+      needScore * MATCH_WEIGHTS.SKILL_NEED_COVERAGE +
       availabilityScore * MATCH_WEIGHTS.AVAILABILITY +
-      proficiencyScore * MATCH_WEIGHTS.PROFICIENCY_COMPATIBILITY +
-      styleScore * MATCH_WEIGHTS.LEARNING_STYLE +
-      languageScore * MATCH_WEIGHTS.LANGUAGE) / 100
-  );
+      proficiencyScore * MATCH_WEIGHTS.PROFICIENCY +
+      reliabilityScore * MATCH_WEIGHTS.RELIABILITY) / 100;
+
+  const overallScore = Math.max(0, Math.min(100, Math.round(rawScore)));
 
   return {
     overallScore,
+    matchType,
     explanation,
     matchedSkills,
     reciprocalSkills,
-    availabilityCompatibility: availabilityMatch,
-    skillCompatibility: Math.round(skillNeedScore),
+    availabilityCompatibility: isAvailCompatible,
+    skillCompatibility: needScore,
+    scoreBreakdown: {
+      reciprocityScore,
+      needScore,
+      availabilityScore,
+      proficiencyScore,
+      reliabilityScore,
+    },
   };
 };
 
+/**
+ * Generates and returns peer recommendations for a user.
+ * Supports goal-driven recommendations or profile-level matching.
+ */
 export const generateMatchesForUser = async (userId, goalId = null) => {
   // Handle Mock DB Mode (offline test fallback only)
   if (process.env.MOCK_DB === 'true' && Match.db?.readyState !== 1) {
@@ -173,11 +274,14 @@ export const generateMatchesForUser = async (userId, goalId = null) => {
           experienceLevel: 'ADVANCED',
           preferredLearningStyle: 'hands_on',
           languages: ['English'],
+          reputation: { averageRating: 5.0, reviewCount: 4 },
+          sessionsCompleted: 4,
         },
         goal: {
           _id: goalId || 'mock_goal_1',
           title: 'Build an AI-powered SaaS Application',
         },
+        matchType: 'RECIPROCAL_EXCHANGE',
         matchedSkills: [
           { needSkill: 'UI/UX Design', candidateTeachSkill: 'UI/UX Design' },
         ],
@@ -186,14 +290,21 @@ export const generateMatchesForUser = async (userId, goalId = null) => {
         ],
         availabilityCompatibility: true,
         skillCompatibility: 90,
-        overallScore: 94,
+        overallScore: 95,
+        scoreBreakdown: {
+          reciprocityScore: 100,
+          needScore: 90,
+          availabilityScore: 100,
+          proficiencyScore: 100,
+          reliabilityScore: 100,
+        },
         status: 'SUGGESTED',
         explanation: [
-          '✓ They teach UI/UX Design, which you need for your goal',
-          '✓ You teach React, which they want to learn',
-          '✓ Schedule alignment (flexible availability overlaps)',
-          '✓ Compatible experience level (advanced)',
-          '✓ Shared learning style preference (hands-on)',
+          '✓ They teach UI/UX Design, directly resolving your goal blueprint requirements',
+          '✓ You teach React, fulfilling their stated learning goals',
+          '✓ Compatible collaboration schedule (flexible availability overlaps)',
+          '✓ Experienced instructor level for your required learning depth',
+          '✓ Established community trust (5.0★ across 4 peer reviews)',
         ],
         createdAt: new Date().toISOString(),
       },
@@ -203,7 +314,7 @@ export const generateMatchesForUser = async (userId, goalId = null) => {
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, 'User not found');
 
-  // Find active goal
+  // Resolve target goal (if provided, or find user's latest active goal)
   let goal = null;
   if (goalId) {
     goal = await Goal.findOne({ _id: goalId, user: userId });
@@ -211,46 +322,98 @@ export const generateMatchesForUser = async (userId, goalId = null) => {
     goal = await Goal.findOne({ user: userId, status: 'ACTIVE' }).sort({ createdAt: -1 });
   }
 
-  if (!goal) {
-    throw new ApiError(400, 'Please create an active goal blueprint before generating peer matches');
+  // If user has neither an active goal nor profile learning interests/skills, provide clear guidance
+  const hasProfileSkills = (user.skills && user.skills.length > 0) || (user.learningInterests && user.learningInterests.length > 0);
+  if (!goal && !hasProfileSkills) {
+    throw new ApiError(
+      400,
+      'To generate peer matches, please list skills you offer or learning interests in your profile, or define an active goal.'
+    );
   }
 
-  // Find candidates excluding self
-  const candidates = await User.find({ _id: { $ne: userId } });
+  // Find existing active connections to exclude already paired peers
+  const existingConnections = await Connection.find({
+    participants: userId,
+    status: 'ACTIVE',
+  }).select('participants');
+
+  const connectedPeerIds = new Set();
+  existingConnections.forEach((conn) => {
+    conn.participants.forEach((p) => {
+      if (p.toString() !== userId.toString()) {
+        connectedPeerIds.add(p.toString());
+      }
+    });
+  });
+
+  // Query discoverable candidates:
+  // - Exclude current user
+  // - Exclude suspended accounts
+  // - Exclude already active connections
+  // - Exclude demo accounts for real users (unless current user is a demo account)
+  const candidateQuery = {
+    _id: { $ne: userId, $nin: Array.from(connectedPeerIds) },
+    isSuspended: { $ne: true },
+  };
+
+  if (!user.isDemo) {
+    candidateQuery.isDemo = { $ne: true };
+  }
+
+  const candidates = await User.find(candidateQuery).select('-password');
 
   const generatedMatches = [];
 
   for (const candidate of candidates) {
     const analysis = calculateMatchScore(user, candidate, goal);
 
-    // Only save matches with score > 20
+    // Save recommendations with reasonable compatibility threshold (>= 25)
     if (analysis.overallScore >= 25) {
       const matchData = {
         user: userId,
         candidate: candidate._id,
-        goal: goal._id,
+        goal: goal?._id || null,
+        matchType: analysis.matchType,
         matchedSkills: analysis.matchedSkills,
         reciprocalSkills: analysis.reciprocalSkills,
         availabilityCompatibility: analysis.availabilityCompatibility,
         skillCompatibility: analysis.skillCompatibility,
         overallScore: analysis.overallScore,
+        scoreBreakdown: analysis.scoreBreakdown,
         explanation: analysis.explanation,
         status: 'SUGGESTED',
       };
 
+      const matchFilter = {
+        user: userId,
+        candidate: candidate._id,
+        goal: goal?._id || null,
+      };
+
       const match = await Match.findOneAndUpdate(
-        { user: userId, candidate: candidate._id, goal: goal._id },
+        matchFilter,
         matchData,
         { upsert: true, new: true }
-      ).populate('candidate', '-password').populate('goal', 'title description');
+      )
+        .populate('candidate', '-password')
+        .populate('goal', 'title description');
 
       generatedMatches.push(match);
     }
   }
 
-  return generatedMatches.sort((a, b) => b.overallScore - a.overallScore);
+  // Return sorted deterministically by overallScore descending, then reciprocity
+  return generatedMatches.sort((a, b) => {
+    if (b.overallScore !== a.overallScore) {
+      return b.overallScore - a.overallScore;
+    }
+    return (b.scoreBreakdown?.reciprocityScore || 0) - (a.scoreBreakdown?.reciprocityScore || 0);
+  });
 };
 
+/**
+ * Retrieves a single match record ensuring user authorization.
+ */
 export const getMatchById = async (matchId, userId) => {
   if (process.env.MOCK_DB === 'true' && Match.db?.readyState !== 1) {
     const matches = await generateMatchesForUser(userId);
@@ -266,4 +429,11 @@ export const getMatchById = async (matchId, userId) => {
   }
 
   return match;
+};
+
+export default {
+  MATCH_WEIGHTS,
+  calculateMatchScore,
+  generateMatchesForUser,
+  getMatchById,
 };

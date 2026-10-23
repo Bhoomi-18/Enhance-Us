@@ -12,7 +12,7 @@ const connectionSchema = new mongoose.Schema(
     goal: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Goal',
-      required: true,
+      required: false,
     },
     exchangeRequest: {
       type: mongoose.Schema.Types.ObjectId,

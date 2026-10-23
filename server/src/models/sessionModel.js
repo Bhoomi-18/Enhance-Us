@@ -13,6 +13,55 @@ const sessionSchema = new mongoose.Schema(
       ref: 'Goal',
       required: false,
     },
+    circle: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Circle',
+      required: false,
+      index: true,
+    },
+    title: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    meetingUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    isGroupSession: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    maxParticipants: {
+      type: Number,
+      default: 20,
+    },
+    rsvps: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        status: {
+          type: String,
+          enum: ['GOING', 'NOT_GOING', 'WAITLIST'],
+          default: 'GOING',
+        },
+        rsvpAt: {
+          type: Date,
+          default: Date.now,
+        },
+        reflection: {
+          type: String,
+          trim: true,
+          default: '',
+          maxlength: 500,
+        },
+      },
+    ],
     participants: [
       {
         type: mongoose.Schema.Types.ObjectId,

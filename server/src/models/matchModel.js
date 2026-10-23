@@ -17,7 +17,13 @@ const matchSchema = new mongoose.Schema(
     goal: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Goal',
-      required: true,
+      required: false,
+    },
+    matchType: {
+      type: String,
+      enum: ['RECIPROCAL_EXCHANGE', 'PARTIAL_MATCH'],
+      default: 'RECIPROCAL_EXCHANGE',
+      index: true,
     },
     matchedSkills: [
       {
@@ -45,6 +51,13 @@ const matchSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
+    scoreBreakdown: {
+      reciprocityScore: { type: Number, default: 0 },
+      needScore: { type: Number, default: 0 },
+      availabilityScore: { type: Number, default: 0 },
+      proficiencyScore: { type: Number, default: 0 },
+      reliabilityScore: { type: Number, default: 0 },
+    },
     status: {
       type: String,
       enum: ['SUGGESTED', 'INTERESTED', 'DECLINED', 'EXPIRED', 'CONNECTED'],
@@ -62,7 +75,7 @@ const matchSchema = new mongoose.Schema(
 );
 
 // Prevent duplicate match records for same user + candidate + goal
-matchSchema.index({ user: 1, candidate: 1, goal: 1 }, { unique: true });
+matchSchema.index({ user: 1, candidate: 1, goal: 1 }, { unique: true, sparse: true });
 
 export const Match = mongoose.model('Match', matchSchema);
 export default Match;

@@ -20,6 +20,8 @@ import SettingsPage from '../pages/SettingsPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import VerifyEmailPage from '../pages/VerifyEmailPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
+import CirclesPage from '../pages/CirclesPage';
+import CircleDetailPage from '../pages/CircleDetailPage';
 import AdminPage from '../pages/AdminPage';
 import ProtectedRoute from './ProtectedRoute';
 import PublicOnlyRoute from './PublicOnlyRoute';
@@ -140,6 +142,22 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <SessionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="circles"
+          element={
+            <ProtectedRoute>
+              <CirclesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="circles/:id"
+          element={
+            <ProtectedRoute>
+              <CircleDetailPage />
             </ProtectedRoute>
           }
         />

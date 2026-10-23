@@ -18,6 +18,7 @@ import {
   X,
   ChevronDown,
   ShieldCheck,
+  Compass,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealth } from '../../hooks/useHealth';
@@ -128,6 +129,7 @@ export const Navbar = () => {
     { label: 'Matches', path: '/matches', icon: Users },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
     { label: 'Sessions', path: '/sessions', icon: Calendar },
+    { label: 'Circles', path: '/circles', icon: Compass },
     { label: 'Search', path: '/search', icon: Search },
     ...(isAdminUser ? [{ label: 'Admin', path: '/admin', icon: ShieldCheck }] : []),
   ];
