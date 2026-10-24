@@ -3,6 +3,7 @@ import { Star, MessageSquarePlus, CheckCircle2, AlertTriangle, Send, ExternalLin
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { submitFeedback, GOOGLE_FEEDBACK_FORM_URL } from '../../services/feedbackService';
+import { useAuth } from '../../context/AuthContext';
 
 const RATING_LABELS = {
   1: 'Needs Improvement',
@@ -13,6 +14,7 @@ const RATING_LABELS = {
 };
 
 export const FeedbackModal = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [improvements, setImprovements] = useState('');
@@ -142,6 +144,17 @@ export const FeedbackModal = ({ isOpen, onClose }) => {
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
+
+          {user?.isDemo && (
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+              <span className="font-bold uppercase text-[10px] bg-amber-200 dark:bg-amber-800/60 px-1.5 py-0.5 rounded">
+                Demo Sandbox
+              </span>
+              <span>
+                Feedback is recorded in your isolated workspace. External email dispatch is safely bypassed.
+              </span>
+            </div>
+          )}
 
           {/* Question 1: Rating */}
           <div className="space-y-1.5">

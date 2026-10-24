@@ -625,7 +625,7 @@ export const RoadmapDetailPage = () => {
             </div>
 
             {/* Estimated Duration Pill */}
-            <div className="shrink-0 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center min-w-[180px]">
+            <div className="shrink-0 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center w-full md:w-auto md:min-w-[180px]">
               <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-teal-800 dark:text-teal-300 mb-1">
                 <Clock className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                 Estimated Duration

@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   Info,
   Check,
+  RotateCcw,
 } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
@@ -23,6 +24,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
+import ResetDemoModal from '../components/demo/ResetDemoModal';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -33,6 +35,7 @@ export const SettingsPage = () => {
 
   // Deletion modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmationPhrase, setConfirmationPhrase] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -235,6 +238,42 @@ export const SettingsPage = () => {
           </Card>
         </div>
 
+        {/* 3.5. DEMO SANDBOX CONTROLS */}
+        {user?.isDemo && (
+          <Card className="border-amber-300 dark:border-amber-900/60 bg-gradient-to-b from-white to-amber-50/20 dark:from-slate-900 dark:to-amber-950/10">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <CardTitle className="text-base text-amber-800 dark:text-amber-300">
+                  Demo Sandbox Controls & Baseline Restore
+                </CardTitle>
+              </div>
+              <CardDescription className="text-slate-600 dark:text-slate-400">
+                You are currently exploring EnhanceUs in an isolated demo workspace. Changes you make stay within your session and never affect real users.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Want to wipe all temporary sample goals, roadmaps, and messages created during your exploration? You can restore your sandbox back to the clean canonical baseline at any time.
+              </p>
+            </CardContent>
+            <CardFooter className="flex items-center justify-between pt-4 border-t border-amber-100 dark:border-amber-950/60">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Resets only your current session workspace.
+              </span>
+              <Button
+                variant="primary"
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                leftIcon={RotateCcw}
+                onClick={() => setIsResetModalOpen(true)}
+              >
+                Reset Sandbox to Baseline
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
+
         {/* 4. DANGER ZONE — PERMANENT ACCOUNT DELETION */}
         <Card className="border-rose-300 dark:border-rose-900/60 bg-gradient-to-b from-white to-rose-50/20 dark:from-slate-900 dark:to-rose-950/10">
           <CardHeader>
@@ -372,6 +411,12 @@ export const SettingsPage = () => {
           </div>
         </form>
       </Modal>
+
+      {/* DEMO RESET MODAL */}
+      <ResetDemoModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+      />
 
     </PageContainer>
   );

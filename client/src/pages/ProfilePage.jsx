@@ -9,6 +9,7 @@ import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import SkillSelector from '../components/ui/SkillSelector';
 import PortfolioSection from '../components/portfolio/PortfolioSection';
+import TrustProfileSection from '../components/trust/TrustProfileSection';
 import { useAuth } from '../context/AuthContext';
 import { getPublicProfile, updateProfile } from '../services/userService';
 import { getUserReviews } from '../services/reviewService';
@@ -231,6 +232,14 @@ export const ProfilePage = () => {
           </Card>
 
         </div>
+      </div>
+
+      {/* V3.2 Auditable Trust & Contribution Standing Section */}
+      <div className="mb-8">
+        <TrustProfileSection
+          targetUserId={userToDisplay?._id}
+          isOwner={isSelf}
+        />
       </div>
 
       {/* Proof-of-Skill Portfolio Matrix */}

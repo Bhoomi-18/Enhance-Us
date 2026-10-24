@@ -5,7 +5,7 @@ import User from '../models/userModel.js';
 import Notification from '../models/notificationModel.js';
 import { ApiError } from '../utils/apiError.js';
 
-const mockReviewsStore = [];
+export const mockReviewsStore = [];
 
 export const createReview = async (reviewerId, reviewData) => {
   const { sessionId, revieweeId, teachingRating, communicationRating, reliabilityRating, feedbackText } = reviewData || {};

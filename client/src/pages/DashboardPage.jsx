@@ -143,15 +143,15 @@ export const DashboardPage = () => {
           ) : (
             <div className="space-y-4">
               {goals.map((goal) => (
-                <div key={goal._id} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                <div key={goal._id} className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <Badge variant="teal">{goal.status}</Badge>
-                      <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">{goal.title}</h4>
+                      <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate">{goal.title}</h4>
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{goal.description}</p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                     <div className="text-right">
                       <span className="text-xs font-extrabold text-teal-700 dark:text-teal-300">{goal.progress}%</span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 block">Coverage</span>

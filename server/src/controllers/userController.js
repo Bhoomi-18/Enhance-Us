@@ -1,4 +1,5 @@
 import User from '../models/userModel.js';
+import * as demoWorkspaceService from '../services/demoWorkspaceService.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import { HTTP_STATUS } from '../constants/index.js';
@@ -24,6 +25,11 @@ export const updateProfile = async (req, res, next) => {
         updates[field] = req.body[field];
       }
     });
+
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const updatedUser = await demoWorkspaceService.updateProfile(req.user.workspaceId, updates);
+      return ApiResponse.success(res, 'Profile updated successfully', { user: updatedUser });
+    }
 
     if (process.env.MOCK_DB === 'true' && User.db?.readyState !== 1) {
       const updatedUser = { ...req.user, ...updates };

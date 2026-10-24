@@ -18,6 +18,10 @@ import assistantRoutes from './assistantRoutes.js';
 import adminRoutes from './adminRoutes.js';
 import portfolioRoutes from './portfolioRoutes.js';
 import circleRoutes from './circleRoutes.js';
+import coachRoutes from './coachRoutes.js';
+import trustRoutes from './trustRoutes.js';
+import insightsRoutes from './insightsRoutes.js';
+import demoRoutes from './demoRoutes.js';
 
 const router = Router();
 
@@ -28,6 +32,9 @@ router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
 router.use('/circles', circleRoutes);
 router.use('/portfolio', portfolioRoutes);
+router.use('/coach', coachRoutes);
+router.use('/trust', trustRoutes);
+router.use('/insights', insightsRoutes);
 router.use('/skills', skillRoutes);
 router.use('/goals', goalRoutes);
 router.use('/roadmaps', roadmapRoutes);
@@ -41,5 +48,6 @@ router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/search', searchRoutes);
 router.use('/feedback', feedbackRoutes);
+router.use('/demo', demoRoutes);
 
 export default router;

@@ -162,7 +162,7 @@ export const GoalDetailPage = () => {
           </div>
 
           {/* Progress Circle & Bar Card */}
-          <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center min-w-[200px] shadow-subtle dark:shadow-none">
+          <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center w-full md:w-auto md:min-w-[200px] shadow-subtle dark:shadow-none">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">SKILL COVERAGE</span>
             <span className="text-3xl font-black text-teal-600 dark:text-teal-400">{progress}%</span>
             <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">

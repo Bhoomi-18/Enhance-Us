@@ -1,9 +1,21 @@
 import * as matchingService from '../services/matchingService.js';
+import * as demoWorkspaceService from '../services/demoWorkspaceService.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 
 export const getMatches = async (req, res, next) => {
   try {
     const { goalId, type, minScore, skill, availability } = req.query;
+
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const matches = await demoWorkspaceService.getMatches(req.user.workspaceId, req.query);
+      return ApiResponse.success(res, 'Matches generated successfully', {
+        matches,
+        totalCount: matches.length,
+        reciprocalCount: matches.filter((m) => m.matchType === 'PERFECT_RECIPROCAL' || m.matchType === 'RECIPROCAL_EXCHANGE').length,
+        partialCount: matches.filter((m) => m.matchType === 'DIRECT_RECIPROCAL' || m.matchType === 'PARTIAL_MATCH').length,
+      });
+    }
+
     let matches = await matchingService.generateMatchesForUser(req.user._id, goalId);
 
     // Filter by match type: RECIPROCAL_EXCHANGE vs PARTIAL_MATCH
@@ -57,6 +69,10 @@ export const getMatches = async (req, res, next) => {
 
 export const getMatch = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const match = await demoWorkspaceService.getMatchById(req.user.workspaceId, req.params.id);
+      return ApiResponse.success(res, 'Match retrieved successfully', { match });
+    }
     const match = await matchingService.getMatchById(req.params.id, req.user._id);
     return ApiResponse.success(res, 'Match details retrieved', { match });
   } catch (error) {

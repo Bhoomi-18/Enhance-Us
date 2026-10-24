@@ -1,4 +1,5 @@
 import * as roadmapService from '../services/roadmapService.js';
+import * as demoWorkspaceService from '../services/demoWorkspaceService.js';
 import { validateRoadmapGenerationInput } from '../validators/roadmapValidator.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { HTTP_STATUS } from '../constants/index.js';
@@ -7,6 +8,16 @@ export const generateRoadmapForGoal = async (req, res, next) => {
   try {
     const { goalId } = req.params;
     validateRoadmapGenerationInput(goalId, req.body);
+
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const roadmap = await demoWorkspaceService.createRoadmap(req.user.workspaceId, goalId, req.body);
+      return ApiResponse.success(
+        res,
+        'Roadmap generated successfully',
+        { roadmap },
+        HTTP_STATUS.CREATED
+      );
+    }
 
     const roadmap = await roadmapService.generateRoadmap(req.user._id, goalId, req.body);
     return ApiResponse.success(
@@ -22,6 +33,10 @@ export const generateRoadmapForGoal = async (req, res, next) => {
 
 export const getUserRoadmaps = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const roadmaps = await demoWorkspaceService.getUserRoadmaps(req.user.workspaceId, req.query);
+      return ApiResponse.success(res, 'Roadmaps retrieved successfully', { roadmaps });
+    }
     const roadmaps = await roadmapService.getUserRoadmaps(req.user._id, req.query);
     return ApiResponse.success(res, 'Roadmaps retrieved successfully', { roadmaps });
   } catch (error) {
@@ -31,6 +46,10 @@ export const getUserRoadmaps = async (req, res, next) => {
 
 export const getRoadmap = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const roadmap = await demoWorkspaceService.getRoadmapById(req.user.workspaceId, req.params.id);
+      return ApiResponse.success(res, 'Roadmap retrieved successfully', { roadmap });
+    }
     const roadmap = await roadmapService.getRoadmapById(req.params.id, req.user._id);
     return ApiResponse.success(res, 'Roadmap retrieved successfully', { roadmap });
   } catch (error) {
@@ -40,6 +59,9 @@ export const getRoadmap = async (req, res, next) => {
 
 export const deleteRoadmap = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      return ApiResponse.success(res, 'Roadmap deleted successfully');
+    }
     await roadmapService.deleteRoadmap(req.params.id, req.user._id);
     return ApiResponse.success(res, 'Roadmap deleted successfully');
   } catch (error) {
@@ -69,6 +91,21 @@ export const updateMilestone = async (req, res, next) => {
     const { id, milestoneId } = req.params;
     const { action, notes, learnerNotes, blockedReason } = req.body || {};
     const effectiveNotes = notes !== undefined ? notes : learnerNotes;
+
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const result = await demoWorkspaceService.updateMilestoneStatus(
+        req.user.workspaceId,
+        id,
+        milestoneId,
+        { status: action || 'COMPLETED', notes: effectiveNotes }
+      );
+      return ApiResponse.success(
+        res,
+        'Milestone status updated successfully',
+        result
+      );
+    }
+
     const result = await roadmapService.updateRoadmapMilestone(
       id,
       milestoneId,

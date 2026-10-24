@@ -127,7 +127,13 @@ export const loginUser = async ({ email, password }) => {
       throw new ApiError(401, 'Invalid email address or password');
     }
 
-    // If MongoDB is connected, find or provision the demo user in MongoDB
+    // Generate unique, server-validated workspace identity for this visitor session
+    const workspaceId = 'ws_' + crypto.randomBytes(16).toString('hex');
+    const { getOrCreateWorkspace } = await import('./demoWorkspaceService.js');
+    await getOrCreateWorkspace(workspaceId);
+
+    // If MongoDB is connected, find or provision placeholder demo user in MongoDB
+    let demoUserId = 'demo_user_static_id';
     if (User.db?.readyState === 1) {
       let demoUser = await User.findOne({ email: DEMO_EMAIL }).select('+password');
       if (!demoUser) {
@@ -136,27 +142,29 @@ export const loginUser = async ({ email, password }) => {
         demoUser = await User.findOne({ email: DEMO_EMAIL });
       }
       if (demoUser) {
-        const token = generateToken({ id: demoUser._id, email: demoUser.email, name: demoUser.name });
-        return { user: demoUser, token };
+        demoUserId = demoUser._id;
       }
     }
 
-    // Offline demo fallback (only if MongoDB is disconnected)
-    const mockDemoId = 'demo_user_static_id';
-    const token = generateToken({ id: mockDemoId, email: DEMO_EMAIL, name: 'Demo Account User' });
+    // Issue tamper-proof JWT token containing workspaceId
+    const token = generateToken({
+      id: demoUserId,
+      email: DEMO_EMAIL,
+      name: 'Alex Morgan',
+      isDemo: true,
+      workspaceId,
+    });
+
     return {
       user: {
-        _id: mockDemoId,
-        name: 'Demo Account User',
+        _id: demoUserId,
+        name: 'Alex Morgan',
         email: DEMO_EMAIL,
-        bio: 'Demonstration account showcasing EnhanceUs goal analysis and reciprocal skill exchanges.',
-        skills: [{ name: 'React', level: 'advanced' }, { name: 'Node.js', level: 'intermediate' }],
-        learningInterests: [{ name: 'UI/UX Design', priority: 'high' }],
-        availability: 'flexible',
-        timezone: 'UTC',
+        bio: 'Full-stack software engineer passionate about modern React architectures, TypeScript, and AI-assisted workflows.',
         role: 'user',
         isDemo: true,
         emailVerified: true,
+        workspaceId,
       },
       token,
     };

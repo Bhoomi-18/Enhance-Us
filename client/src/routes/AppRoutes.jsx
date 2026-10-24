@@ -22,6 +22,8 @@ import VerifyEmailPage from '../pages/VerifyEmailPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import CirclesPage from '../pages/CirclesPage';
 import CircleDetailPage from '../pages/CircleDetailPage';
+import CoachPage from '../pages/CoachPage';
+import CommunityInsightsPage from '../pages/CommunityInsightsPage';
 import AdminPage from '../pages/AdminPage';
 import ProtectedRoute from './ProtectedRoute';
 import PublicOnlyRoute from './PublicOnlyRoute';
@@ -158,6 +160,22 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <CircleDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coach"
+          element={
+            <ProtectedRoute>
+              <CoachPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="insights"
+          element={
+            <ProtectedRoute>
+              <CommunityInsightsPage />
             </ProtectedRoute>
           }
         />

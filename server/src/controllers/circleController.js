@@ -1,9 +1,18 @@
 import * as circleService from '../services/circleService.js';
+import * as demoWorkspaceService from '../services/demoWorkspaceService.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 
 export const getCircles = async (req, res, next) => {
   try {
     const { search, skill, level, policy, onlyMy, page, limit } = req.query;
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const result = await demoWorkspaceService.getCircles(
+        req.user.workspaceId,
+        { search, skill, level, policy, onlyMy: onlyMy === 'true' },
+        { page, limit }
+      );
+      return ApiResponse.success(res, 'Circles retrieved successfully', result);
+    }
     const result = await circleService.getCircles(
       { search, skill, level, policy, onlyMy: onlyMy === 'true' },
       { page, limit },
@@ -18,6 +27,10 @@ export const getCircles = async (req, res, next) => {
 export const getCircleById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const circle = await demoWorkspaceService.getCircleById(req.user.workspaceId, id);
+      return ApiResponse.success(res, 'Circle details retrieved', { circle, isMember: true, userRole: 'LEADER' });
+    }
     const result = await circleService.getCircleById(id, req.user);
     return ApiResponse.success(res, 'Circle details retrieved', result);
   } catch (error) {
@@ -27,6 +40,10 @@ export const getCircleById = async (req, res, next) => {
 
 export const createCircle = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const circle = await demoWorkspaceService.createCircle(req.user.workspaceId, req.body);
+      return ApiResponse.created(res, 'Learning circle created successfully', { circle });
+    }
     const circle = await circleService.createCircle(req.user._id, req.body);
     return ApiResponse.created(res, 'Learning circle created successfully', { circle });
   } catch (error) {
@@ -47,6 +64,10 @@ export const updateCircle = async (req, res, next) => {
 export const joinCircle = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const circle = await demoWorkspaceService.joinCircle(req.user.workspaceId, id);
+      return ApiResponse.success(res, 'Successfully joined learning circle', { status: 'JOINED', circle });
+    }
     const result = await circleService.joinCircle(id, req.user._id, req.body);
     const message =
       result.status === 'JOINED'
@@ -61,6 +82,10 @@ export const joinCircle = async (req, res, next) => {
 export const leaveCircle = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      await demoWorkspaceService.leaveCircle(req.user.workspaceId, id);
+      return ApiResponse.success(res, 'Successfully left the learning circle');
+    }
     await circleService.leaveCircle(id, req.user._id);
     return ApiResponse.success(res, 'Successfully left the learning circle');
   } catch (error) {
@@ -188,6 +213,10 @@ export const getPosts = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { page, limit } = req.query;
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const result = await demoWorkspaceService.getCirclePosts(req.user.workspaceId, id, { page, limit });
+      return ApiResponse.success(res, 'Circle discussions retrieved', result);
+    }
     const result = await circleService.getCirclePosts(id, req.user, { page, limit });
     return ApiResponse.success(res, 'Circle discussions retrieved', result);
   } catch (error) {
@@ -198,6 +227,10 @@ export const getPosts = async (req, res, next) => {
 export const createPost = async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const post = await demoWorkspaceService.createCirclePost(req.user.workspaceId, id, req.body);
+      return ApiResponse.created(res, 'Discussion post created', { post });
+    }
     const post = await circleService.createCirclePost(id, req.user._id, req.body);
     return ApiResponse.created(res, 'Discussion post created', { post });
   } catch (error) {

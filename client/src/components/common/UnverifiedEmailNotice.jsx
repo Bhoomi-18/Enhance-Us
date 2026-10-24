@@ -36,11 +36,11 @@ export const UnverifiedEmailNotice = () => {
       aria-live="polite"
       className="bg-amber-500/10 dark:bg-amber-500/15 border-b border-amber-500/20 px-4 py-2.5 text-xs text-amber-900 dark:text-amber-200 transition-all"
     >
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <Mail className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-          <span>
-            <strong>Action required:</strong> Please verify your email address (<strong>{user.email}</strong>) to unlock goal creation, roadmaps, and exchange sessions.
+          <span className="min-w-0">
+            <strong>Action required:</strong> Please verify your email address (<strong className="break-all">{user.email}</strong>) to unlock goal creation, roadmaps, and exchange sessions.
           </span>
         </div>
 

@@ -358,6 +358,9 @@ export const generateMatchesForUser = async (userId, goalId = null) => {
 
   if (!user.isDemo) {
     candidateQuery.isDemo = { $ne: true };
+  } else {
+    // Strict isolation: Demo accounts match only with demo peers, preventing real-user exposure
+    candidateQuery.isDemo = true;
   }
 
   const candidates = await User.find(candidateQuery).select('-password');

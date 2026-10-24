@@ -22,6 +22,27 @@ export const authenticateUser = async (req, res, next) => {
     // Verify token
     const decoded = verifyToken(token);
 
+    // Dedicated handling for authenticated demo sessions with workspace isolation
+    if (decoded.isDemo || (decoded.email && decoded.email.toLowerCase() === 'demo@enhanceus.org')) {
+      const workspaceId = decoded.workspaceId || ('ws_' + (decoded.id?.toString() || 'default_demo'));
+      const { getOrCreateWorkspace, getProfile } = await import('../services/demoWorkspaceService.js');
+      await getOrCreateWorkspace(workspaceId);
+      const profile = await getProfile(workspaceId);
+
+      req.user = {
+        _id: decoded.id,
+        name: profile?.name || decoded.name || 'Alex Morgan',
+        email: 'demo@enhanceus.org',
+        role: 'user',
+        isDemo: true,
+        emailVerified: true,
+        workspaceId,
+        skills: profile?.skills || [],
+        learningInterests: profile?.learningInterests || [],
+      };
+      return next();
+    }
+
     // If live MongoDB is connected, always fetch real user document from database
     if (User.db?.readyState === 1) {
       const user = await User.findById(decoded.id).select('-password');
@@ -80,6 +101,26 @@ export const optionalAuthenticateUser = async (req, res, next) => {
     }
 
     const decoded = verifyToken(token);
+
+    if (decoded.isDemo || (decoded.email && decoded.email.toLowerCase() === 'demo@enhanceus.org')) {
+      const workspaceId = decoded.workspaceId || ('ws_' + (decoded.id?.toString() || 'default_demo'));
+      const { getOrCreateWorkspace, getProfile } = await import('../services/demoWorkspaceService.js');
+      await getOrCreateWorkspace(workspaceId);
+      const profile = await getProfile(workspaceId);
+
+      req.user = {
+        _id: decoded.id,
+        name: profile?.name || decoded.name || 'Alex Morgan',
+        email: 'demo@enhanceus.org',
+        role: 'user',
+        isDemo: true,
+        emailVerified: true,
+        workspaceId,
+        skills: profile?.skills || [],
+        learningInterests: profile?.learningInterests || [],
+      };
+      return next();
+    }
 
     if (User.db?.readyState === 1) {
       const user = await User.findById(decoded.id).select('-password');

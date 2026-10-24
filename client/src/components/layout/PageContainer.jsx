@@ -3,14 +3,14 @@ import { cn } from '../../utils';
 
 export const PageContainer = ({ children, title, subtitle, action, className }) => {
   return (
-    <div className={cn('max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full', className)}>
+    <div className={cn('max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-w-0', className)}>
       {(title || subtitle || action) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            {title && <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{title}</h1>}
-            {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">{subtitle}</p>}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 min-w-0">
+          <div className="min-w-0 flex-1">
+            {title && <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight break-words">{title}</h1>}
+            {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">{subtitle}</p>}
           </div>
-          {action && <div>{action}</div>}
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
       {children}

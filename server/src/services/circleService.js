@@ -96,8 +96,8 @@ export const getCircles = async (filters = {}, pagination = {}, viewer = null) =
     };
   }
 
-  // Real MongoDB Mode
-  const query = { status: { $ne: 'CLOSED' } };
+  // Real MongoDB Mode: strictly isolate public discovery from demo circles
+  const query = { status: { $ne: 'CLOSED' }, isDemo: { $ne: true } };
 
   if (onlyMy && viewerIdStr) {
     query['members.user'] = viewerIdStr;
