@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import config from './config/env.js';
+import correlationMiddleware from './middleware/correlationMiddleware.js';
 import requestLogger from './middleware/requestLogger.js';
 import notFoundMiddleware from './middleware/notFoundMiddleware.js';
 import errorMiddleware from './middleware/errorMiddleware.js';
@@ -12,6 +13,9 @@ const app = express();
 
 // Security: Disable X-Powered-By header to avoid fingerprinting
 app.disable('x-powered-by');
+
+// Request Correlation ID Middleware (generates or propagates X-Correlation-Id)
+app.use(correlationMiddleware);
 
 // Security: Baseline HTTP Security Headers
 app.use((req, res, next) => {

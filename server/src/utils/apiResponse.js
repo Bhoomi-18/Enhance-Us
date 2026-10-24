@@ -7,11 +7,16 @@ export class ApiResponse {
     });
   }
 
-  static error(res, message = 'An error occurred', statusCode = 500, errors = null) {
+  static error(res, message = 'An error occurred', statusCode = 500, errors = null, correlationId = null) {
     const response = {
       success: false,
       message,
     };
+
+    const resolvedCorrelationId = correlationId || res.getHeader?.('X-Correlation-Id') || res.req?.correlationId;
+    if (resolvedCorrelationId) {
+      response.correlationId = resolvedCorrelationId;
+    }
 
     if (errors) {
       response.errors = errors;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -68,10 +69,10 @@ export const SessionsPage = () => {
   // Helper to reliably extract the other participant in a session or connection
   const getPeer = (item) => {
     if (!item?.participants || !Array.isArray(item.participants)) return null;
-    const currentUserIdStr = user?._id?.toString();
+    const currentUserIdStr = (user?._id || user?.id)?.toString();
     return item.participants.find((p) => {
-      const pId = (p && typeof p === 'object' && p._id) ? p._id.toString() : p?.toString();
-      return pId && pId !== currentUserIdStr;
+      const pId = (p && typeof p === 'object' && (p._id || p.id)) ? (p._id || p.id).toString() : p?.toString();
+      return pId && (!currentUserIdStr || pId !== currentUserIdStr);
     });
   };
 
@@ -170,7 +171,10 @@ export const SessionsPage = () => {
 
     setSubmittingSession(true);
     try {
-      await createSession(sessionData);
+      await createSession({
+        ...sessionData,
+        clientTimezoneOffset: new Date().getTimezoneOffset(),
+      });
       setIsScheduleModalOpen(false);
       setStatusMessage('Exchange session scheduled successfully! Peer notified.');
       fetchInitialData();
@@ -219,13 +223,34 @@ export const SessionsPage = () => {
           : peer.toString();
       }
 
+      // Fallback: If targetRevieweeId is still unresolved, scan participants array
+      if (!targetRevieweeId && Array.isArray(selectedSessionForReview.participants)) {
+        const myId = (user?._id || user?.id)?.toString();
+        const other = selectedSessionForReview.participants.find((p) => {
+          const id = (p && typeof p === 'object' && (p._id || p.id)) ? (p._id || p.id).toString() : p?.toString();
+          return id && id !== myId;
+        });
+        if (other) {
+          targetRevieweeId = (other && typeof other === 'object' && (other._id || other.id))
+            ? (other._id || other.id).toString()
+            : other.toString();
+        }
+      }
+
+      const overallRating = Math.round(
+        ((reviewData.teachingRating + reviewData.communicationRating + reviewData.reliabilityRating) / 3) * 10
+      ) / 10;
+
       await createReview({
         sessionId: selectedSessionForReview._id,
         revieweeId: targetRevieweeId || undefined,
         teachingRating: reviewData.teachingRating,
         communicationRating: reviewData.communicationRating,
         reliabilityRating: reviewData.reliabilityRating,
+        rating: overallRating,
+        overallRating,
         feedbackText: reviewData.feedbackText,
+        feedback: reviewData.feedbackText,
       });
 
       setSelectedSessionForReview(null);
@@ -416,6 +441,15 @@ export const SessionsPage = () => {
                 <p className="text-[11px] leading-relaxed">
                   Sessions are scheduled with connected exchange partners. Accept an exchange request in Messages or connect with peers on Matches first.
                 </p>
+                <div className="pt-1">
+                  <Link
+                    to="/matches"
+                    onClick={() => setIsScheduleModalOpen(false)}
+                    className="inline-flex items-center text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline"
+                  >
+                    Find Match Partners &rarr;
+                  </Link>
+                </div>
               </div>
             )}
           </div>

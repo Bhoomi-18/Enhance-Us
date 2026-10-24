@@ -573,6 +573,11 @@ export const createExchangeRequest = async (workspaceId, requestData) => {
   return newRequest;
 };
 
+export const getConnections = async (workspaceId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  return ws.data.connections || [];
+};
+
 /* ==========================================================================
  * SESSIONS & REVIEWS
  * ========================================================================== */
@@ -597,7 +602,7 @@ export const getSessionById = async (workspaceId, sessionId) => {
 
 export const createSession = async (workspaceId, sessionData) => {
   const ws = await getOrCreateWorkspace(workspaceId);
-  const peer = ws.data.peers?.[0] || { _id: 'peer_1', name: 'Sarah Chen' };
+  const peer = (ws.data.peers || []).find((p) => p._id === sessionData.recipientId) || ws.data.peers?.[0] || { _id: 'demo_peer_sarah_002', name: 'Sarah Chen' };
 
   const newSession = {
     _id: 'demo_session_' + Date.now(),

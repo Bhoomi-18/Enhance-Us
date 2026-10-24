@@ -123,6 +123,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    lastVerificationSentAt: {
+      type: Date,
+      default: null,
+    },
     onboardingCompletedAt: {
       type: Date,
       default: null,

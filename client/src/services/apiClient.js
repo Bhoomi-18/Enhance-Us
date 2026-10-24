@@ -60,13 +60,17 @@ const apiClient = axios.create({
   timeout: 60000, // 60s timeout allows Render free containers (~30-50s cold start) to boot
 });
 
-// Request Interceptor: attach token fallback and monitor in-flight request duration
+// Request Interceptor: attach token fallback, generate correlation ID, and monitor in-flight request duration
 apiClient.interceptors.request.use(
   (config) => {
     onRequestStart();
     const token = localStorage.getItem('enhanceus_auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Propagate or generate request correlation ID for tracing
+    if (!config.headers['X-Correlation-Id']) {
+      config.headers['X-Correlation-Id'] = `req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
     }
     return config;
   },
@@ -125,6 +129,7 @@ apiClient.interceptors.response.use(
       statusCode: error.response?.status || (isTimeout ? 408 : 0),
       data: error.response?.data || null,
       details: error.response?.data?.errors || null,
+      correlationId: error.response?.headers?.['x-correlation-id'] || error.response?.data?.correlationId || error.config?.headers?.['X-Correlation-Id'] || null,
       response: error.response,
       isTimeout,
       isNetworkError,

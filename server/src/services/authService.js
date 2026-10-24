@@ -80,6 +80,7 @@ export const registerUser = async (userData) => {
     emailVerified: false,
     verificationTokenHash,
     verificationTokenExpires,
+    lastVerificationSentAt: new Date(),
   });
 
   // 4. Send verification email via Plunk (non-blocking failure handles provider hiccups safely)
@@ -292,8 +293,8 @@ export const resendVerificationEmail = async (emailInput, currentUser = null) =>
 
   const user = await User.findOne({ email: targetEmail });
 
-  // Generic response prevents account enumeration
-  if (!user) {
+  // Generic response prevents account enumeration and demo account interception
+  if (!user || user.isDemo) {
     return {
       success: true,
       message: 'If an unverified account is registered with this email, a verification link has been sent.',
@@ -307,6 +308,16 @@ export const resendVerificationEmail = async (emailInput, currentUser = null) =>
     };
   }
 
+  // Enforce 60-second cooldown between resend requests to protect against email flooding
+  const COOLDOWN_SECONDS = 60;
+  if (user.lastVerificationSentAt) {
+    const elapsedSeconds = Math.floor((Date.now() - new Date(user.lastVerificationSentAt).getTime()) / 1000);
+    if (elapsedSeconds < COOLDOWN_SECONDS) {
+      const waitSeconds = COOLDOWN_SECONDS - elapsedSeconds;
+      throw new ApiError(429, `Please wait ${waitSeconds} seconds before requesting another verification email.`);
+    }
+  }
+
   // Generate new cryptographic verification token
   const rawVerificationToken = crypto.randomBytes(32).toString('hex');
   const verificationTokenHash = crypto
@@ -317,22 +328,42 @@ export const resendVerificationEmail = async (emailInput, currentUser = null) =>
 
   user.verificationTokenHash = verificationTokenHash;
   user.verificationTokenExpires = verificationTokenExpires;
+  user.lastVerificationSentAt = new Date();
   await user.save();
 
-  // Send email via Plunk
-  const emailRes = await sendVerificationEmail({
-    to: user.email,
-    name: user.name,
-    verificationToken: rawVerificationToken,
-  });
+  // Send email via Plunk with graceful timeout and provider error handling
+  let emailDelivery = { delivered: false, simulated: false };
+  try {
+    const emailRes = await sendVerificationEmail({
+      to: user.email,
+      name: user.name,
+      verificationToken: rawVerificationToken,
+    });
+    emailDelivery = {
+      delivered: Boolean(emailRes.delivered),
+      simulated: Boolean(emailRes.simulated),
+    };
+  } catch (emailErr) {
+    console.warn(`⚠️ [Resend Verification Warning] Email provider issue for [${user.email}]: ${emailErr.message}`);
+    emailDelivery = {
+      delivered: false,
+      simulated: false,
+      error: emailErr.message,
+    };
+  }
+
+  const message = emailDelivery.simulated
+    ? 'Verification email simulated in non-production environment. Check server logs.'
+    : emailDelivery.delivered
+    ? 'A fresh verification link has been sent to your email address. Please check your inbox.'
+    : 'Verification link generated, but the email delivery service experienced a temporary delay. Please try again in a few moments.';
 
   return {
     success: true,
-    delivered: Boolean(emailRes.delivered),
-    simulated: Boolean(emailRes.simulated),
-    message: emailRes.simulated
-      ? 'Verification email simulated in non-production environment. Check server logs.'
-      : 'A fresh verification link has been sent to your email address. Please check your inbox.',
+    delivered: emailDelivery.delivered,
+    simulated: emailDelivery.simulated,
+    emailPending: !emailDelivery.delivered && !emailDelivery.simulated,
+    message,
   };
 };
 

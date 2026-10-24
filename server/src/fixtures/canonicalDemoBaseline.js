@@ -19,7 +19,7 @@
  * Always clone via getCanonicalBaseline() before mutating in a workspace.
  */
 
-export const BASELINE_VERSION = '3.3.0';
+export const BASELINE_VERSION = '3.4.0';
 
 export const DEMO_USER_ID = 'demo_user_canonical_001';
 export const DEMO_PEER_ID = 'demo_peer_sarah_002';
@@ -457,7 +457,63 @@ export const CANONICAL_DEMO_BASELINE = {
     },
   ],
 
-  // 9. Sessions (Completed & Scheduled)
+  // 9. Active Peer Connections
+  connections: [
+    {
+      _id: 'demo_conn_001',
+      participants: [
+        {
+          _id: DEMO_USER_ID,
+          name: 'Alex Morgan',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+        },
+        {
+          _id: DEMO_PEER_ID,
+          name: 'Sarah Chen',
+          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=250',
+          reputation: { averageRating: 4.9, reviewCount: 7 },
+        },
+      ],
+      goal: {
+        _id: 'demo_goal_saas_001',
+        title: 'Full-Stack AI Micro-SaaS MVP',
+      },
+      skills: {
+        userASkill: 'React & TypeScript Architecture',
+        userBSkill: 'UI/UX Design & Figma Systems',
+      },
+      status: 'ACTIVE',
+      createdAt: '2026-10-15T10:00:00.000Z',
+    },
+    {
+      _id: 'demo_conn_002',
+      participants: [
+        {
+          _id: DEMO_USER_ID,
+          name: 'Alex Morgan',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+        },
+        {
+          _id: DEMO_PEER_MARCUS_ID,
+          name: 'Marcus Vance',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
+          reputation: { averageRating: 4.8, reviewCount: 5 },
+        },
+      ],
+      goal: {
+        _id: 'demo_goal_saas_001',
+        title: 'Full-Stack AI Micro-SaaS MVP',
+      },
+      skills: {
+        userASkill: 'React & TypeScript Architecture',
+        userBSkill: 'Docker & Kubernetes Cloud Architecture',
+      },
+      status: 'ACTIVE',
+      createdAt: '2026-10-16T10:00:00.000Z',
+    },
+  ],
+
+  // 10. Sessions (Completed & Scheduled)
   sessions: [
     {
       _id: 'demo_session_comp_001',

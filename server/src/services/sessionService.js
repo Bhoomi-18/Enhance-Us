@@ -48,14 +48,34 @@ export const createSession = async (userId, sessionData) => {
   }
 
   const dateStr = typeof date === 'string' && date.includes('T') ? date.split('T')[0] : String(date).trim();
-  const scheduledDateTime = new Date(`${dateStr}T${normalizedTime}`);
+
+  let scheduledDateTime;
+  // If client provided explicit clientTimezoneOffset in minutes (JS getTimezoneOffset() convention)
+  if (sessionData?.clientTimezoneOffset !== undefined && !isNaN(Number(sessionData.clientTimezoneOffset))) {
+    const offsetMs = Number(sessionData.clientTimezoneOffset) * 60 * 1000;
+    const naiveUtc = new Date(`${dateStr}T${normalizedTime}Z`).getTime();
+    if (!isNaN(naiveUtc)) {
+      scheduledDateTime = new Date(naiveUtc + offsetMs);
+    }
+  }
+
+  if (!scheduledDateTime || isNaN(scheduledDateTime.getTime())) {
+    scheduledDateTime = new Date(`${dateStr}T${normalizedTime}`);
+  }
 
   if (isNaN(scheduledDateTime.getTime())) {
     throw new ApiError(400, 'Invalid date or time format. Please provide a valid date and time');
   }
 
-  // Allow a 15-minute buffer for clock drift and local timezone boundary skew
-  if (scheduledDateTime.getTime() < Date.now() - 15 * 60 * 1000) {
+  // Allow a 12-hour tolerance for the current calendar day across global timezones (Render runs UTC),
+  // while strictly rejecting genuinely past dates (e.g. past days)
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isTodayOrFuture = dateStr >= todayStr;
+  const minAllowedTime = isTodayOrFuture
+    ? Date.now() - 12 * 60 * 60 * 1000 // 12-hour buffer allows users worldwide to schedule on current date
+    : Date.now() - 15 * 60 * 1000;
+
+  if (scheduledDateTime.getTime() < minAllowedTime) {
     throw new ApiError(400, 'Session date and time must be set in the future');
   }
 
@@ -249,7 +269,11 @@ export const createSession = async (userId, sessionData) => {
     console.warn('[Notification Error]', notifErr.message);
   }
 
-  return session;
+  const populated = await Session.findById(session._id)
+    .populate('participants', 'name email avatar reputation')
+    .populate('goal', 'title');
+
+  return populated || session;
 };
 
 export const getUserSessions = async (userId, statusFilter) => {
@@ -326,7 +350,12 @@ export const completeSession = async (sessionId, userId) => {
   }
 
   await session.save();
-  return session;
+
+  const populated = await Session.findById(session._id)
+    .populate('participants', 'name email avatar reputation')
+    .populate('goal', 'title');
+
+  return populated || session;
 };
 
 export const cancelSession = async (sessionId, userId) => {

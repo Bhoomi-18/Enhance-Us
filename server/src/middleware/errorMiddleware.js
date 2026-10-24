@@ -35,16 +35,19 @@ export const errorMiddleware = (err, req, res, next) => {
       path: req.originalUrl,
       statusCode,
       message,
+      correlationId: req.correlationId,
       details: { errors },
     });
   } catch {}
 
-  // Log error stack in non-production
+  // Structured logging of application errors without sensitive payloads
   if (config.nodeEnv !== 'production') {
-    console.error('[Error Stack]', err.stack || err);
+    console.error(`[Error ${statusCode}] [${req.correlationId || 'no-corr'}] ${req.method} ${req.originalUrl}: ${message}`, err.stack || err);
+  } else if (statusCode >= 500) {
+    console.error(`[Server Exception] [${req.correlationId || 'no-corr'}] ${req.method} ${req.originalUrl}: ${message}`);
   }
 
-  return ApiResponse.error(res, message, statusCode, errors);
+  return ApiResponse.error(res, message, statusCode, errors, req.correlationId);
 };
 
 export default errorMiddleware;

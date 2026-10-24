@@ -48,6 +48,10 @@ export const declineRequest = async (req, res, next) => {
 
 export const getConnections = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const connections = await demoWorkspaceService.getConnections(req.user.workspaceId);
+      return ApiResponse.success(res, 'Active connections retrieved', { connections });
+    }
     const connections = await exchangeService.getUserConnections(req.user._id);
     return ApiResponse.success(res, 'Active connections retrieved', { connections });
   } catch (error) {

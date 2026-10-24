@@ -168,6 +168,9 @@ async function runAuthAndEmailSuite() {
       'Resend verification returns generic anti-enumeration response for non-existent email'
     );
 
+    // Simulate elapsed 60-second cooldown window so resend is permitted
+    await User.updateOne({ email: realUserEmail }, { lastVerificationSentAt: new Date(Date.now() - 70000) });
+
     const resendValidRes = await request('/auth/resend-verification', 'POST', {
       email: realUserEmail,
     });

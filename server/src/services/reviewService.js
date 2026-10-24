@@ -15,9 +15,17 @@ export const createReview = async (reviewerId, reviewData) => {
   }
 
   // Validate ratings (1-5)
-  const tRating = Number(teachingRating);
-  const cRating = Number(communicationRating);
-  const rRating = Number(reliabilityRating);
+  let tRating = Number(teachingRating);
+  let cRating = Number(communicationRating);
+  let rRating = Number(reliabilityRating);
+
+  // Fallback to single rating if multi-dimensional ratings omitted
+  if ((isNaN(tRating) || isNaN(cRating) || isNaN(rRating)) && reviewData?.rating !== undefined) {
+    const single = Number(reviewData.rating);
+    tRating = single;
+    cRating = single;
+    rRating = single;
+  }
 
   if ([tRating, cRating, rRating].some((r) => isNaN(r) || r < 1 || r > 5)) {
     throw new ApiError(400, 'Teaching, communication, and reliability ratings must be valid numbers between 1 and 5');
@@ -25,6 +33,7 @@ export const createReview = async (reviewerId, reviewData) => {
 
   const overallRating = Math.round(((tRating + cRating + rRating) / 3) * 10) / 10;
   const callerIdStr = (reviewerId?._id ? reviewerId._id : reviewerId).toString();
+  const cleanFeedback = (feedbackText || reviewData?.feedback || '').trim();
 
   // Normalize reviewee ID from object, string, or undefined
   let targetReviewee = revieweeId && typeof revieweeId === 'object' ? (revieweeId._id || revieweeId.id) : revieweeId;
@@ -88,7 +97,7 @@ export const createReview = async (reviewerId, reviewData) => {
       communicationRating: cRating,
       reliabilityRating: rRating,
       overallRating,
-      feedbackText: feedbackText ? feedbackText.trim() : '',
+      feedbackText: cleanFeedback,
       createdAt: new Date().toISOString(),
     };
     mockReviewsStore.push(newMockReview);
@@ -160,7 +169,7 @@ export const createReview = async (reviewerId, reviewData) => {
     communicationRating: cRating,
     reliabilityRating: rRating,
     overallRating,
-    feedbackText: feedbackText ? feedbackText.trim() : '',
+    feedbackText: cleanFeedback,
   });
 
   // Re-calculate reviewee reputation summary
