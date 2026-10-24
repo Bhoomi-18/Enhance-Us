@@ -5,10 +5,9 @@
 
 export const getAdminEmails = () => {
   const envVal = (process.env.ADMIN_EMAILS || '').trim();
-  const raw = envVal.length > 0 ? envVal : 'admin@briefenai.me,support@briefenai.me';
-  if (!raw || typeof raw !== 'string') return new Set();
+  if (!envVal || typeof envVal !== 'string') return new Set();
 
-  const cleaned = raw
+  const cleaned = envVal
     .trim()
     .replace(/^['"]|['"]$/g, '')
     .split(',')

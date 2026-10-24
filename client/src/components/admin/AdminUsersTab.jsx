@@ -16,7 +16,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
-import { getAdminUsers, suspendUser, reactivateUser } from '../../services/adminService';
+import { getAdminUsers, getAdminUserById, suspendUser, reactivateUser } from '../../services/adminService';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
@@ -318,7 +318,14 @@ export const AdminUsersTab = () => {
                       <td className="py-3 px-4 text-right space-x-1">
                         <button
                           type="button"
-                          onClick={() => setSelectedUserDetails(u)}
+                          onClick={async () => {
+                            try {
+                              const res = await getAdminUserById(u._id);
+                              setSelectedUserDetails(res?.data || u);
+                            } catch {
+                              setSelectedUserDetails(u);
+                            }
+                          }}
                           title="View Profile Details"
                           className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                         >
@@ -493,6 +500,14 @@ export const AdminUsersTab = () => {
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-bold">Profile Completion</span>
                   <span className="font-semibold text-teal-600">{selectedUserDetails.profileCompletion}%</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Sessions</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedUserDetails.stats?.sessionsCount ?? selectedUserDetails.sessionsCompleted ?? 0}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Goals Created</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedUserDetails.stats?.goalsCount ?? 0}</span>
                 </div>
               </div>
 

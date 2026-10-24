@@ -313,13 +313,21 @@ export const AdminFeedbackTab = () => {
 
                       {/* Email Delivered Status */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        {item.emailDelivered ? (
+                        {item.emailDeliveryStatus === 'ACCEPTED' || (item.emailDelivered && !item.emailDeliveryStatus) ? (
                           <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 text-[11px]">
-                            <CheckCircle2 className="w-3 h-3" /> Delivered
+                            <CheckCircle2 className="w-3 h-3" /> Accepted (Plunk)
+                          </span>
+                        ) : item.emailDeliveryStatus === 'SIMULATED' ? (
+                          <span className="text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1 text-[11px]">
+                            <Clock className="w-3 h-3" /> Simulated
+                          </span>
+                        ) : item.emailDeliveryStatus === 'FAILED' ? (
+                          <span className="text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1 text-[11px]">
+                            <AlertCircle className="w-3 h-3" /> Failed
                           </span>
                         ) : (
                           <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 text-[11px]">
-                            <Clock className="w-3 h-3" /> Pending / Local
+                            <Clock className="w-3 h-3" /> Pending
                           </span>
                         )}
                       </td>
@@ -477,7 +485,14 @@ export const AdminFeedbackTab = () => {
                 </div>
                 <div>
                   <strong>Email Delivery:</strong>{' '}
-                  {selectedFeedback.emailDelivered ? 'Delivered' : 'Pending'}
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    {selectedFeedback.emailDeliveryStatus || (selectedFeedback.emailDelivered ? 'ACCEPTED' : 'PENDING')}
+                  </span>
+                  {selectedFeedback.emailDeliveryError && (
+                    <span className="block text-[10px] text-rose-500 truncate max-w-xs" title={selectedFeedback.emailDeliveryError}>
+                      Error: {selectedFeedback.emailDeliveryError}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

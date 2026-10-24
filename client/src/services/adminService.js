@@ -32,6 +32,13 @@ export const getAdminUsers = async (params = {}) => {
 };
 
 /**
+ * Retrieves detailed administrative view of a specific user
+ */
+export const getAdminUserById = async (userId) => {
+  return await apiClient.get(`/admin/users/${userId}`);
+};
+
+/**
  * Suspends an account with administrative reason
  */
 export const suspendUser = async (userId, reason) => {
@@ -111,6 +118,7 @@ export default {
   checkAdminStatus,
   getAdminOverview,
   getAdminUsers,
+  getAdminUserById,
   suspendUser,
   reactivateUser,
   getAdminAnalytics,

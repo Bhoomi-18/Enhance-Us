@@ -20,6 +20,9 @@ export const recordAndSendFeedback = async ({ rating, improvements, newFeatures,
         user: user?._id || null,
         submittedEmail: user?.email || null,
         emailDelivered: false,
+        emailDeliveryStatus: 'PENDING',
+        emailDeliveryAttemptedAt: new Date(),
+        isDemo: Boolean(user?.isDemo),
         status: 'NEW',
         source: 'WEBSITE',
       });
@@ -45,20 +48,24 @@ export const recordAndSendFeedback = async ({ rating, improvements, newFeatures,
       comments,
       user,
     });
-    emailResult = { delivered: true, simulated: plunkRes.simulated || false };
+    const isSimulated = Boolean(plunkRes?.simulated);
+    emailResult = { delivered: !isSimulated, simulated: isSimulated };
 
     if (savedFeedback) {
-      savedFeedback.emailDelivered = true;
+      savedFeedback.emailDelivered = !isSimulated;
+      savedFeedback.emailDeliveryStatus = isSimulated ? 'SIMULATED' : 'ACCEPTED';
       await savedFeedback.save();
     }
   } catch (emailErr) {
     console.error('⚠️ [Feedback Email Warning] Plunk dispatch failed, but feedback was preserved:', emailErr.message);
     if (savedFeedback) {
+      savedFeedback.emailDelivered = false;
+      savedFeedback.emailDeliveryStatus = 'FAILED';
       savedFeedback.emailDeliveryError = emailErr.message;
       await savedFeedback.save().catch(() => {});
     }
-    // As per Phase 6: If email fails after storage, do not discard or fail the user request
-    emailResult = { delivered: false, pending: true, error: emailErr.message };
+    // If email fails after storage, do not discard or fail the user request
+    emailResult = { delivered: false, pending: false, error: emailErr.message };
   }
 
   return {

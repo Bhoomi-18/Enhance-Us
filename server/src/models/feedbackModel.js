@@ -40,9 +40,23 @@ const feedbackSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    emailDeliveryStatus: {
+      type: String,
+      enum: ['NOT_REQUESTED', 'PENDING', 'ACCEPTED', 'FAILED', 'SIMULATED'],
+      default: 'PENDING',
+    },
+    emailDeliveryAttemptedAt: {
+      type: Date,
+      default: null,
+    },
     emailDeliveryError: {
       type: String,
       default: null,
+    },
+    isDemo: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     status: {
       type: String,

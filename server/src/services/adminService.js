@@ -81,12 +81,14 @@ export const getAdminOverviewMetrics = async () => {
     User.countDocuments({ ...realUserFilter, $or: [{ lastActiveAt: { $gte: dayAgo } }, { updatedAt: { $gte: dayAgo } }] }),
     User.countDocuments({ ...realUserFilter, $or: [{ lastActiveAt: { $gte: weekAgo } }, { updatedAt: { $gte: weekAgo } }] }),
     User.countDocuments({ ...realUserFilter, $or: [{ lastActiveAt: { $gte: monthAgo } }, { updatedAt: { $gte: monthAgo } }] }),
-    // Sessions
+    // Sessions (exclude demo)
     Session.aggregate([
+      { $match: { isDemo: { $ne: true } } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]),
-    // Feedback
+    // Feedback (exclude demo)
     Feedback.aggregate([
+      { $match: { isDemo: { $ne: true } } },
       {
         $group: {
           _id: null,
@@ -98,8 +100,17 @@ export const getAdminOverviewMetrics = async () => {
           emailDelivered: {
             $sum: { $cond: [{ $eq: ['$emailDelivered', true] }, 1, 0] },
           },
+          emailAccepted: {
+            $sum: { $cond: [{ $eq: ['$emailDeliveryStatus', 'ACCEPTED'] }, 1, 0] },
+          },
+          emailFailed: {
+            $sum: { $cond: [{ $eq: ['$emailDeliveryStatus', 'FAILED'] }, 1, 0] },
+          },
+          emailSimulated: {
+            $sum: { $cond: [{ $eq: ['$emailDeliveryStatus', 'SIMULATED'] }, 1, 0] },
+          },
           emailPending: {
-            $sum: { $cond: [{ $eq: ['$emailDelivered', false] }, 1, 0] },
+            $sum: { $cond: [{ $in: ['$emailDeliveryStatus', ['PENDING', null]] }, 1, 0] },
           },
         },
       },
@@ -130,6 +141,9 @@ export const getAdminOverviewMetrics = async () => {
     avgRating: 0,
     unresolved: 0,
     emailDelivered: 0,
+    emailAccepted: 0,
+    emailFailed: 0,
+    emailSimulated: 0,
     emailPending: 0,
   };
 
@@ -150,7 +164,10 @@ export const getAdminOverviewMetrics = async () => {
       unresolved: fbAggregate.unresolved,
       averageRating: Math.round((fbAggregate.avgRating || 0) * 10) / 10,
       emailDeliveredCount: fbAggregate.emailDelivered,
-      emailPendingCount: fbAggregate.emailPending,
+      emailAcceptedCount: fbAggregate.emailAccepted || 0,
+      emailFailedCount: fbAggregate.emailFailed || 0,
+      emailSimulatedCount: fbAggregate.emailSimulated || 0,
+      emailPendingCount: fbAggregate.emailPending || 0,
     },
     health,
   };
@@ -207,8 +224,10 @@ export const getUsersDirectory = async ({
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (pageNum - 1) * limitNum;
 
+  const allowedSortFields = ['createdAt', 'name', 'email', 'lastActiveAt', 'sessionsCompleted', 'updatedAt'];
+  const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
   const sortDirection = sortOrder === 'asc' ? 1 : -1;
-  const sortCriteria = { [sortBy]: sortDirection };
+  const sortCriteria = { [safeSortBy]: sortDirection };
 
   const [rawUsers, total] = await Promise.all([
     User.find(query)
@@ -252,6 +271,10 @@ export const suspendUser = async ({ targetUserId, reason = 'Administrative suspe
 
   if (isAdminEmail(user.email)) {
     throw new ApiError(403, 'Cannot suspend an authorized administrator account.');
+  }
+
+  if (actor?._id && user._id.toString() === actor._id.toString()) {
+    throw new ApiError(403, 'You cannot suspend your own administrative account.');
   }
 
   user.isSuspended = true;
@@ -315,6 +338,8 @@ export const getAdminFeedbackInbox = async ({
   if (status && status !== 'ALL') {
     query.status = status;
   }
+  // Exclude demo feedback from real feedback inbox by default
+  query.isDemo = { $ne: true };
   if (rating && rating !== 'ALL') {
     const num = parseInt(rating, 10);
     if (!isNaN(num)) query.rating = num;
@@ -520,9 +545,43 @@ export const importGoogleFormsCsv = async ({ csvContent, actor }) => {
   };
 };
 
+/**
+ * Retrieves detailed administrative view of a specific user
+ */
+export const getUserDetails = async ({ targetUserId }) => {
+  if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+    throw new ApiError(400, 'Invalid User ID provided.');
+  }
+
+  const user = await User.findById(targetUserId)
+    .select('-password -verificationTokenHash -verificationTokenExpires -resetPasswordTokenHash -resetPasswordExpires')
+    .lean();
+
+  if (!user) throw new ApiError(404, 'User not found.');
+
+  const [sessionCount, goalCount] = await Promise.all([
+    Session.countDocuments({
+      isDemo: { $ne: true },
+      $or: [{ host: targetUserId }, { participants: targetUserId }],
+    }),
+    Goal.countDocuments({ user: targetUserId }),
+  ]);
+
+  return {
+    ...user,
+    profileCompletion: calculateProfileCompletion(user),
+    isAdminUser: isAdminEmail(user.email),
+    stats: {
+      sessionsCount: sessionCount,
+      goalsCount: goalCount,
+    },
+  };
+};
+
 export default {
   getAdminOverviewMetrics,
   getUsersDirectory,
+  getUserDetails,
   suspendUser,
   reactivateUser,
   getAdminFeedbackInbox,

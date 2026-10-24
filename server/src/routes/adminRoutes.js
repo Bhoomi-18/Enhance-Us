@@ -19,6 +19,7 @@ router.get('/overview', adminController.getOverview);
 
 // 3. User Management
 router.get('/users', adminController.getUsers);
+router.get('/users/:id', adminController.getUserById);
 router.patch('/users/:id/suspend', adminController.suspendUser);
 router.patch('/users/:id/reactivate', adminController.reactivateUser);
 

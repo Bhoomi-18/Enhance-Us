@@ -97,6 +97,12 @@ async function runAdminTestSuite() {
     assert(!isAdminEmail(regularUserEmail), 'Regular user email is correctly rejected by allowlist');
     assert(!isAdminEmail(DEMO_EMAIL), 'Demo user email is never in allowlist');
 
+    // Test missing/empty ADMIN_EMAILS behavior
+    const origEnv = process.env.ADMIN_EMAILS;
+    process.env.ADMIN_EMAILS = '';
+    assert(getAdminEmails().size === 0, 'Empty ADMIN_EMAILS yields empty allowlist (denies access by default)');
+    process.env.ADMIN_EMAILS = origEnv;
+
     // ==========================================
     // 2. USER SETUP FOR AUTH & ACCESS CONTROL
     // ==========================================
@@ -229,6 +235,17 @@ async function runAdminTestSuite() {
       'Profile completion percentage is calculated and attached'
     );
 
+    // 4d. Specific User Detail endpoint (GET /admin/users/:id)
+    const userDetailRes = await request(`/admin/users/${regularUserId}`, 'GET', null, adminToken);
+    assert(userDetailRes.status === 200, 'Admin can retrieve individual user details by ID (200)');
+    assert(userDetailRes.data?.data?.email === regularUserEmail, 'User details match requested target user');
+    assert(!userDetailRes.data?.data?.password, 'Sensitive password hash is excluded from user detail endpoint');
+    assert(typeof userDetailRes.data?.data?.stats?.goalsCount === 'number', 'User details include goal activity counts');
+    assert(typeof userDetailRes.data?.data?.stats?.sessionsCount === 'number', 'User details include session activity counts');
+
+    const regularUserDetailRes = await request(`/admin/users/${regularUserId}`, 'GET', null, regularToken);
+    assert(regularUserDetailRes.status === 403, 'Non-admin users cannot access user detail endpoint (403)');
+
     // ==========================================
     // 5. ACCOUNT SUSPENSION & REACTIVATION
     // ==========================================
@@ -325,6 +342,10 @@ async function runAdminTestSuite() {
       f.comments?.includes('Admin testing feedback workflow')
     );
     assert(testFeedbackItem !== undefined, 'Submitted feedback visible in admin inbox');
+    assert(
+      ['ACCEPTED', 'SIMULATED', 'FAILED', 'PENDING'].includes(testFeedbackItem.emailDeliveryStatus || 'PENDING'),
+      'Feedback item provides granular emailDeliveryStatus'
+    );
 
     // 6c. Update feedback status
     const updateStatusRes = await request(
@@ -375,7 +396,13 @@ async function runAdminTestSuite() {
     assert(healthRes.data?.data?.integrations?.emailService?.configured !== undefined, 'Email integration state reported without secrets');
     assert(healthRes.data?.data?.integrations?.geminiAi?.configured !== undefined, 'Gemini AI state reported without secrets');
 
-    // 7b. Audit logs
+    // 7b. Analytics feature adoption
+    const analyticsRes = await request('/admin/analytics?days=30', 'GET', null, adminToken);
+    assert(analyticsRes.status === 200, 'Admin retrieves platform usage analytics (200)');
+    const circleFeature = analyticsRes.data?.data?.featureAdoption?.find((f) => f.feature === 'Learning Circles');
+    assert(circleFeature !== undefined, 'Analytics includes Learning Circles in feature adoption metrics');
+
+    // 7c. Audit logs
     const auditRes = await request('/admin/audit-logs?limit=10', 'GET', null, adminToken);
     assert(auditRes.status === 200, 'Admin retrieves audit trail (200)');
     assert(auditRes.data?.data?.logs?.length > 0, 'Audit logs contain administrative actions');

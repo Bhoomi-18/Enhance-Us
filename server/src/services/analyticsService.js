@@ -4,6 +4,7 @@ import Session from '../models/sessionModel.js';
 import Goal from '../models/goalModel.js';
 import Roadmap from '../models/roadmapModel.js';
 import Feedback from '../models/feedbackModel.js';
+import Circle from '../models/circleModel.js';
 import { DEMO_EMAIL } from './authService.js';
 
 /**
@@ -135,19 +136,21 @@ export const getPlatformAnalytics = async (days = 30) => {
     }
   }
 
-  // 4. Feature Adoption Counts
+  // 4. Feature Adoption Counts (excluding demo accounts/workspaces)
   try {
-    const [goalsCount, roadmapsCount, sessionsCount, feedbackCount] = await Promise.all([
-      Goal.countDocuments({}),
-      Roadmap.countDocuments({}),
-      Session.countDocuments({}),
-      Feedback.countDocuments({}),
+    const [goalsCount, roadmapsCount, sessionsCount, circlesCount, feedbackCount] = await Promise.all([
+      Goal.countDocuments({ isDemo: { $ne: true } }),
+      Roadmap.countDocuments({ isDemo: { $ne: true } }),
+      Session.countDocuments({ isDemo: { $ne: true } }),
+      Circle.countDocuments({ isDemo: { $ne: true } }),
+      Feedback.countDocuments({ isDemo: { $ne: true } }),
     ]);
 
     featureAdoption = [
       { feature: 'Competency Goals', count: goalsCount },
       { feature: 'AI Roadmaps', count: roadmapsCount },
       { feature: 'Peer Sessions', count: sessionsCount },
+      { feature: 'Learning Circles', count: circlesCount },
       { feature: 'User Feedbacks', count: feedbackCount },
     ];
   } catch (e) {
@@ -186,9 +189,9 @@ export const getConversionFunnel = async () => {
     await Promise.all([
       User.countDocuments(realUserFilter),
       User.countDocuments({ ...realUserFilter, emailVerified: true }),
-      Goal.distinct('user').then((res) => res.length),
-      Roadmap.distinct('user').then((res) => res.length),
-      Session.distinct('host').then((res) => res.length),
+      Goal.distinct('user', { isDemo: { $ne: true } }).then((res) => res.length),
+      Roadmap.distinct('user', { isDemo: { $ne: true } }).then((res) => res.length),
+      Session.distinct('host', { isDemo: { $ne: true } }).then((res) => res.length),
     ]);
 
   const base = totalSignups || 1;

@@ -53,6 +53,19 @@ export const getUsers = async (req, res, next) => {
 };
 
 /**
+ * Retrieves specific user details for administrative inspection
+ */
+export const getUserById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const data = await adminService.getUserDetails({ targetUserId: id });
+    return ApiResponse.success(res, 'User details retrieved', data, HTTP_STATUS.OK);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * Suspends an account
  */
 export const suspendUser = async (req, res, next) => {
@@ -208,6 +221,7 @@ export default {
   checkAdminStatus,
   getOverview,
   getUsers,
+  getUserById,
   suspendUser,
   reactivateUser,
   getAnalytics,
