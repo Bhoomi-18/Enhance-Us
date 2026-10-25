@@ -375,3 +375,86 @@ export const sendFeedbackNotificationEmail = async ({ rating, improvements, newF
     name: 'EnhanceUs Feedback Notification',
   });
 };
+
+/**
+ * Dispatches an email copy of a user-facing application notification.
+ * Handles provider errors gracefully so main app flow is never interrupted.
+ */
+export const sendNotificationEmail = async ({ to, name, type, title, message, link }) => {
+  try {
+    if (!to) return { success: false, reason: 'No recipient email provided' };
+
+    const baseUrl = getFrontendBaseUrl();
+    const actionUrl = link
+      ? `${baseUrl}${link.startsWith('/') ? link : `/${link}`}`
+      : `${baseUrl}/notifications`;
+    const settingsUrl = `${baseUrl}/settings`;
+    const displayName = name ? escapeHtml(name) : 'EnhanceUs Member';
+    const escapedTitle = escapeHtml(title || 'New Notification');
+    const escapedMessage = escapeHtml(message || '');
+
+    const subject = `[EnhanceUs] ${title || 'New Notification'}`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6; margin: 0; padding: 24px; background-color: #f8fafc; }
+    .container { max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .header { background: #0d9488; color: #ffffff; padding: 24px; text-align: center; }
+    .header h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.025em; }
+    .header p { margin: 4px 0 0 0; font-size: 13px; opacity: 0.92; }
+    .content { padding: 28px 24px; }
+    .notif-card { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0d9488; border-radius: 12px; padding: 16px 20px; margin: 20px 0; }
+    .notif-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+    .notif-body { font-size: 13px; color: #475569; line-height: 1.5; }
+    .btn-container { text-align: center; margin: 28px 0 16px 0; }
+    .btn { display: inline-block; background-color: #0d9488; color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 13px; padding: 12px 24px; border-radius: 10px; }
+    .footer { padding: 20px 24px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.5; }
+    .footer a { color: #0d9488; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>EnhanceUs Notification</h1>
+      <p>Goal-Driven Peer Skill Exchange</p>
+    </div>
+    <div class="content">
+      <p>Hello <strong>${displayName}</strong>,</p>
+      <p>You have received a new update on EnhanceUs:</p>
+
+      <div class="notif-card">
+        <div class="notif-title">${escapedTitle}</div>
+        <div class="notif-body">${escapedMessage}</div>
+      </div>
+
+      <div class="btn-container">
+        <a href="${actionUrl}" class="btn" target="_blank" rel="noopener noreferrer">View in EnhanceUs</a>
+      </div>
+    </div>
+    <div class="footer">
+      You are receiving this email based on your EnhanceUs notification settings.<br/>
+      You can manage your notification preferences or opt out of optional emails anytime in your <a href="${settingsUrl}">Account Settings</a>.<br/>
+      &copy; ${new Date().getFullYear()} EnhanceUs. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+
+    const result = await sendPlunkEmail({
+      to,
+      subject,
+      body: html,
+      name: 'EnhanceUs Notifications',
+    });
+
+    return result;
+  } catch (err) {
+    console.warn(`⚠️ [Notification Email Delivery Non-fatal] Failed to send email to ${to}:`, err.message);
+    return { success: false, error: err.message };
+  }
+};

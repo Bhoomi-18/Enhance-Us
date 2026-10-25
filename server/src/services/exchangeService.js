@@ -3,62 +3,139 @@ import Connection from '../models/connectionModel.js';
 import Conversation from '../models/conversationModel.js';
 import Match from '../models/matchModel.js';
 import Message from '../models/messageModel.js';
+import User from '../models/userModel.js';
 import { ApiError } from '../utils/apiError.js';
+import { createFilteredNotification } from './notificationService.js';
 
 export const mockExchangeRequestsStore = [];
 export const mockConnectionsStore = [];
 
+export const getPendingRequestStatus = async (requesterId, recipientId) => {
+  if (!recipientId) return { hasPendingRequest: false, pendingRequest: null };
+
+  if (process.env.MOCK_DB === 'true' && Connection.db?.readyState !== 1) {
+    const existingReq = mockExchangeRequestsStore.find(
+      (r) =>
+        r.sender === requesterId.toString() &&
+        r.recipient === recipientId.toString() &&
+        r.status === 'PENDING'
+    );
+    return { hasPendingRequest: Boolean(existingReq), pendingRequest: existingReq || null };
+  }
+
+  const pending = await ExchangeRequest.findOne({
+    sender: requesterId,
+    recipient: recipientId,
+    status: 'PENDING',
+  });
+
+  return {
+    hasPendingRequest: Boolean(pending),
+    pendingRequest: pending || null,
+  };
+};
+
 export const createExchangeRequest = async (senderId, requestData) => {
-  const { recipientId, goalId, matchId, offeredSkill, requestedSkill, proposedExchange } = requestData;
+  const { recipientId, goalId, matchId, offeredSkill, requestedSkill } = requestData;
+  const rawMessage = requestData.message !== undefined ? requestData.message : requestData.proposedExchange;
+  const message = (rawMessage || '').trim();
+
+  if (!recipientId) {
+    throw new ApiError(400, 'Recipient ID is required');
+  }
 
   if (senderId.toString() === recipientId.toString()) {
     throw new ApiError(400, 'You cannot send an exchange request to yourself');
   }
 
+  if (message.length > 500) {
+    throw new ApiError(400, 'Custom message cannot exceed 500 characters');
+  }
+
   if (process.env.MOCK_DB === 'true' && Connection.db?.readyState !== 1) {
+    const existingReq = mockExchangeRequestsStore.find(
+      (r) =>
+        r.sender === senderId.toString() &&
+        r.recipient === recipientId.toString() &&
+        r.status === 'PENDING'
+    );
+    if (existingReq) {
+      throw new ApiError(409, 'A pending session request already exists with this peer');
+    }
+
     const mockReq = {
       _id: 'mock_request_' + Date.now(),
       sender: senderId.toString(),
       recipient: recipientId.toString(),
       goal: goalId,
       match: matchId,
-      offeredSkill,
-      requestedSkill,
-      proposedExchange,
+      offeredSkill: offeredSkill || 'General Skill Exchange',
+      requestedSkill: requestedSkill || 'Direct Mentorship Session',
+      proposedExchange: message || `I'd like to exchange knowledge with you on EnhanceUs.`,
       status: 'PENDING',
+      isDirectRequest: Boolean(requestData.isDirectRequest || (!goalId && !matchId)),
       createdAt: new Date().toISOString(),
     };
     mockExchangeRequestsStore.push(mockReq);
     return mockReq;
   }
 
-  // Check for duplicate pending request
-  const duplicateQuery = {
-    sender: senderId,
-    recipient: recipientId,
-    status: 'PENDING',
-  };
-  if (goalId) duplicateQuery.goal = goalId;
-
-  const existing = await ExchangeRequest.findOne(duplicateQuery);
-
-  if (existing) {
-    throw new ApiError(400, 'An exchange request is already pending with this peer');
+  // Ensure recipient exists and is not suspended
+  const recipient = await User.findById(recipientId);
+  if (!recipient || recipient.isSuspended) {
+    throw new ApiError(404, 'Recipient user not found or unavailable');
   }
 
-  const exchangeRequest = await ExchangeRequest.create({
+  // Enforce rule: A requester may have only one pending direct request to a particular recipient at a time
+  const existingPending = await ExchangeRequest.findOne({
     sender: senderId,
     recipient: recipientId,
-    goal: goalId || null,
-    match: matchId || null,
-    offeredSkill,
-    requestedSkill,
-    proposedExchange: proposedExchange || `I'd like to exchange ${offeredSkill} for ${requestedSkill}.`,
     status: 'PENDING',
   });
 
+  if (existingPending) {
+    throw new ApiError(409, 'A pending session request already exists with this peer');
+  }
+
+  let exchangeRequest;
+  try {
+    exchangeRequest = await ExchangeRequest.create({
+      sender: senderId,
+      recipient: recipientId,
+      goal: goalId || null,
+      match: matchId || null,
+      offeredSkill: offeredSkill?.trim() || 'General Skill Exchange',
+      requestedSkill: requestedSkill?.trim() || 'Direct Mentorship Session',
+      proposedExchange: message || `I would like to exchange knowledge with you on EnhanceUs.`,
+      status: 'PENDING',
+      isDirectRequest: Boolean(requestData.isDirectRequest || (!goalId && !matchId)),
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      throw new ApiError(409, 'A pending session request already exists with this peer');
+    }
+    throw err;
+  }
+
   if (matchId) {
     await Match.findByIdAndUpdate(matchId, { status: 'INTERESTED' });
+  }
+
+  // Dispatch in-app notification & optional email to recipient
+  try {
+    const sender = await User.findById(senderId).select('name');
+    await createFilteredNotification({
+      recipientId,
+      senderId,
+      type: 'REQUEST',
+      title: 'New Exchange Session Request',
+      message: `${sender?.name || 'A peer'} sent you an exchange session request: "${(
+        message || 'I would like to exchange knowledge with you.'
+      ).slice(0, 90)}"`,
+      link: '/messages',
+    });
+  } catch (notifErr) {
+    console.warn('⚠️ [Request Notification Non-fatal]', notifErr.message);
   }
 
   return exchangeRequest;
@@ -180,6 +257,21 @@ export const acceptExchangeRequest = async (requestId, userId) => {
     await Match.findByIdAndUpdate(request.match, { status: 'CONNECTED' });
   }
 
+  // Notify requester that their proposal was accepted
+  try {
+    const accepter = await User.findById(userId).select('name');
+    await createFilteredNotification({
+      recipientId: request.sender,
+      senderId: userId,
+      type: 'REQUEST_ACCEPTED',
+      title: 'Exchange Request Accepted',
+      message: `${accepter?.name || 'A peer'} accepted your exchange proposal! You can now start collaborating in chat.`,
+      link: '/messages',
+    });
+  } catch (notifErr) {
+    console.warn('⚠️ [Accept Request Notification Non-fatal]', notifErr.message);
+  }
+
   return { connection, conversation };
 };
 
@@ -202,7 +294,22 @@ export const declineExchangeRequest = async (requestId, userId) => {
     await Match.findByIdAndUpdate(request.match, { status: 'DECLINED' });
   }
 
-  return { success: true };
+  // Notify requester that proposal was declined
+  try {
+    const decliner = await User.findById(userId).select('name');
+    await createFilteredNotification({
+      recipientId: request.sender,
+      senderId: userId,
+      type: 'REQUEST_DECLINED',
+      title: 'Exchange Request Update',
+      message: `${decliner?.name || 'Peer'} was unable to accept your exchange proposal at this time.`,
+      link: '/messages',
+    });
+  } catch (notifErr) {
+    console.warn('⚠️ [Decline Request Notification Non-fatal]', notifErr.message);
+  }
+
+  return { success: true, request, status: 'DECLINED' };
 };
 
 export const getUserConnections = async (userId) => {

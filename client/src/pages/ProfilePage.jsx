@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { User, Award, BookOpen, Mail, Clock, Calendar, Star, ShieldCheck, CheckCircle2, Edit3 } from 'lucide-react';
+import { User, Award, BookOpen, Mail, Clock, Calendar, Star, ShieldCheck, CheckCircle2, Edit3, AlertCircle } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -13,6 +13,7 @@ import TrustProfileSection from '../components/trust/TrustProfileSection';
 import { useAuth } from '../context/AuthContext';
 import { getPublicProfile, updateProfile } from '../services/userService';
 import { getUserReviews } from '../services/reviewService';
+import { sendExchangeRequest, getPendingRequestStatus } from '../services/exchangeService';
 
 export const ProfilePage = () => {
   const { id } = useParams();
@@ -37,7 +38,21 @@ export const ProfilePage = () => {
   });
   const [updating, setUpdating] = useState(false);
 
+  // Direct Session Request State (V3.5.1)
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  const [checkingPending, setCheckingPending] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
+  const [requestError, setRequestError] = useState(null);
+  const [requestData, setRequestData] = useState({
+    offeredSkill: '',
+    requestedSkill: '',
+    message: '',
+  });
+
   useEffect(() => {
+    let isMounted = true;
     const loadProfileData = async () => {
       setLoading(true);
       try {
@@ -47,17 +62,37 @@ export const ProfilePage = () => {
             getPublicProfile(targetId),
             getUserReviews(targetId),
           ]);
-          if (profRes?.data?.user) setProfileUser(profRes.data.user);
-          if (revRes?.data?.reviews) setReviews(revRes.data.reviews);
+          if (isMounted) {
+            if (profRes?.data?.user) setProfileUser(profRes.data.user);
+            if (revRes?.data?.reviews) setReviews(revRes.data.reviews);
+          }
+
+          // If viewing another peer's profile, check if a pending session request already exists
+          if (!isSelf && targetId && authUser?._id) {
+            try {
+              setCheckingPending(true);
+              const pendingRes = await getPendingRequestStatus(targetId);
+              if (isMounted && pendingRes?.data?.hasPendingRequest) {
+                setHasPendingRequest(true);
+              }
+            } catch (pErr) {
+              console.warn('[Pending Request Check]', pErr.message);
+            } finally {
+              if (isMounted) setCheckingPending(false);
+            }
+          }
         }
       } catch (e) {
         console.warn('[Profile Fetch Error]', e.message);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     loadProfileData();
+    return () => {
+      isMounted = false;
+    };
   }, [id, authUser, isSelf]);
 
   const handleOpenEdit = () => {
@@ -72,6 +107,69 @@ export const ProfilePage = () => {
       learningInterests: profileUser.learningInterests || [],
     });
     setIsEditModalOpen(true);
+  };
+
+  const handleOpenRequestModal = () => {
+    if (!profileUser) return;
+    const peerTeachable = (profileUser.skills || []).filter(
+      (s) => !s.type || s.type === 'TEACH' || s.type === 'both'
+    );
+    const myTeachable = (authUser?.skills || []).filter(
+      (s) => !s.type || s.type === 'TEACH' || s.type === 'both'
+    );
+
+    setRequestData({
+      requestedSkill: peerTeachable[0]?.name || 'Skill Mentorship',
+      offeredSkill: myTeachable[0]?.name || 'Peer Knowledge Exchange',
+      message: `Hi ${profileUser.name || 'there'}! I saw your profile on EnhanceUs and would love to organize a 1-on-1 skill exchange session with you.`,
+    });
+    setRequestError(null);
+    setRequestSuccess(false);
+    setIsRequestModalOpen(true);
+  };
+
+  const handleSendDirectRequest = async (e) => {
+    e.preventDefault();
+    if (!profileUser?._id) return;
+
+    if (!requestData.message.trim()) {
+      setRequestError('Please provide a message explaining your session exchange request.');
+      return;
+    }
+
+    if (requestData.message.trim().length > 500) {
+      setRequestError('Message cannot exceed 500 characters.');
+      return;
+    }
+
+    setSendingRequest(true);
+    setRequestError(null);
+
+    try {
+      await sendExchangeRequest({
+        recipientId: profileUser._id,
+        offeredSkill: requestData.offeredSkill.trim() || 'General Skill Exchange',
+        requestedSkill: requestData.requestedSkill.trim() || 'Direct Mentorship Session',
+        proposedExchange: requestData.message.trim(),
+      });
+
+      setRequestSuccess(true);
+      setHasPendingRequest(true);
+
+      setTimeout(() => {
+        setIsRequestModalOpen(false);
+        setRequestSuccess(false);
+      }, 1600);
+    } catch (err) {
+      const errMsg =
+        err?.response?.data?.message || err.message || 'Failed to send direct session request.';
+      if (errMsg.toLowerCase().includes('already pending')) {
+        setHasPendingRequest(true);
+      }
+      setRequestError(errMsg);
+    } finally {
+      setSendingRequest(false);
+    }
   };
 
   const handleSaveProfile = async (e) => {
@@ -99,9 +197,27 @@ export const ProfilePage = () => {
       title={isSelf ? 'Your Profile & Reputation Blueprint' : `${userToDisplay?.name || 'Peer'}'s Profile`}
       subtitle="Verified domain skills, teaching hours, and peer exchange ratings."
       action={
-        isSelf && (
+        isSelf ? (
           <Button variant="outline" size="sm" onClick={handleOpenEdit} leftIcon={Edit3}>
             Edit Profile & Skills
+          </Button>
+        ) : hasPendingRequest ? (
+          <div className="flex items-center gap-2">
+            <Badge variant="amber" icon={Clock} className="px-3 py-1.5 text-xs font-semibold">
+              Request Pending
+            </Badge>
+            <Button size="sm" variant="outline" disabled leftIcon={Calendar}>
+              Request Sent
+            </Button>
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            onClick={handleOpenRequestModal}
+            leftIcon={Calendar}
+            className="bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+          >
+            Request a Session
           </Button>
         )
       }
@@ -319,6 +435,111 @@ export const ProfilePage = () => {
           <div className="pt-3 flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
             <Button type="submit" isLoading={updating}>Save Profile Changes</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Direct Session Request Modal (V3.5.1) */}
+      <Modal
+        isOpen={isRequestModalOpen}
+        onClose={() => !sendingRequest && setIsRequestModalOpen(false)}
+        title={`Request a Session with ${profileUser?.name || 'Peer'}`}
+      >
+        <form onSubmit={handleSendDirectRequest} className="space-y-4 text-xs">
+          {/* Peer Context Pill */}
+          <div className="p-3 bg-teal-50/60 dark:bg-teal-950/40 rounded-xl border border-teal-200/80 dark:border-teal-800/60 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-teal-600 dark:bg-teal-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+              {profileUser?.name ? profileUser.name.charAt(0).toUpperCase() : 'P'}
+            </div>
+            <div>
+              <p className="font-bold text-slate-900 dark:text-slate-100 text-xs">{profileUser?.name}</p>
+              <p className="text-[11px] text-teal-700 dark:text-teal-300">
+                {profileUser?.skills?.length
+                  ? `Teaches: ${profileUser.skills.map((s) => s.name).join(', ')}`
+                  : 'Open to Peer Skill Exchange'}
+              </p>
+            </div>
+          </div>
+
+          {requestSuccess && (
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>Session request sent successfully! Peer notified in Exchange Requests.</span>
+            </div>
+          )}
+
+          {requestError && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 rounded-xl text-rose-800 dark:text-rose-300 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+              <span>{requestError}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">Skill You Want To Learn</label>
+              <input
+                type="text"
+                value={requestData.requestedSkill}
+                onChange={(e) => setRequestData({ ...requestData, requestedSkill: e.target.value })}
+                placeholder="e.g. React, UI/UX Design"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">Skill You Can Offer In Return</label>
+              <input
+                type="text"
+                value={requestData.offeredSkill}
+                onChange={(e) => setRequestData({ ...requestData, offeredSkill: e.target.value })}
+                placeholder="e.g. Node.js, TypeScript"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">Custom Request Message</label>
+              <span className={`text-[10px] ${requestData.message.length > 500 ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>
+                {requestData.message.length} / 500
+              </span>
+            </div>
+            <textarea
+              rows={4}
+              maxLength={500}
+              value={requestData.message}
+              onChange={(e) => setRequestData({ ...requestData, message: e.target.value })}
+              placeholder="Introduce yourself and explain what you'd like to collaborate on..."
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 leading-relaxed"
+              required
+            />
+          </div>
+
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+            ℹ This request will appear in {profileUser?.name || 'this peer'}'s <strong>Exchange Requests</strong> tab. Only one pending request may be active at a time.
+          </p>
+
+          <div className="pt-2 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsRequestModalOpen(false)}
+              disabled={sendingRequest}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={sendingRequest}
+              disabled={sendingRequest || requestSuccess || !requestData.message.trim()}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              Send Request
+            </Button>
           </div>
         </form>
       </Modal>

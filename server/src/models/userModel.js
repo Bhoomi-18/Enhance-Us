@@ -136,6 +136,7 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     notificationPreferences: {
+      emailNotifications: { type: Boolean, default: true },
       sessionUpdates: { type: Boolean, default: true },
       goalReminders: { type: Boolean, default: true },
       peerActivity: { type: Boolean, default: true },

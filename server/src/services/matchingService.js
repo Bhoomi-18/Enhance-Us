@@ -7,6 +7,7 @@ import {
   normalizeSkillName,
   areSkillsCompatible,
   calculateProficiencyCompatibility,
+  isValidTeachableSkill,
 } from '../utils/skillNormalizer.js';
 
 /**
@@ -66,32 +67,70 @@ export const calculateMatchScore = (user, candidate, goal = null) => {
     }));
   }
 
-  // 2. Candidate's teaching skills
-  const candidateTeachSkills = (candidate.skills || [])
-    .filter((s) => !s.type || s.type === 'TEACH' || s.type === 'both')
-    .map((s) => ({
-      name: normalizeSkillName(s.name),
-      rawName: s.name,
-      level: s.level || 'INTERMEDIATE',
-      category: s.category || 'General',
-    }));
+  // 2. Candidate's teaching skills - MUST be valid, non-empty, non-placeholder teachable skills
+  const rawCandidateTeachSkills = (candidate.skills || []).filter(isValidTeachableSkill);
 
-  // 3. User's teaching skills
-  const userTeachSkills = (user.skills || [])
-    .filter((s) => !s.type || s.type === 'TEACH' || s.type === 'both')
-    .map((s) => ({
-      name: normalizeSkillName(s.name),
-      rawName: s.name,
-      level: s.level || 'INTERMEDIATE',
-      category: s.category || 'General',
-    }));
+  // If candidate has 0 valid teachable skills, they cannot be recommended as a teaching peer
+  if (rawCandidateTeachSkills.length === 0) {
+    return {
+      overallScore: 0,
+      matchType: 'INELIGIBLE',
+      explanation: ['Peer has not listed any valid teachable skills'],
+      matchedSkills: [],
+      reciprocalSkills: [],
+      availabilityCompatibility: false,
+      skillCompatibility: 0,
+      scoreBreakdown: {
+        reciprocityScore: 0,
+        needScore: 0,
+        availabilityScore: 0,
+        proficiencyScore: 0,
+        reliabilityScore: 0,
+      },
+    };
+  }
+
+  // Deduplicate candidate teaching skills by normalized name
+  const seenCandidateSkills = new Set();
+  const candidateTeachSkills = [];
+  for (const s of rawCandidateTeachSkills) {
+    const norm = normalizeSkillName(s.name);
+    if (norm && !seenCandidateSkills.has(norm.toLowerCase())) {
+      seenCandidateSkills.add(norm.toLowerCase());
+      candidateTeachSkills.push({
+        name: norm,
+        rawName: s.name,
+        level: s.level || 'INTERMEDIATE',
+        category: s.category || 'General',
+      });
+    }
+  }
+
+  // 3. User's teaching skills - Deduplicated and validated
+  const rawUserTeachSkills = (user.skills || []).filter(isValidTeachableSkill);
+  const seenUserSkills = new Set();
+  const userTeachSkills = [];
+  for (const s of rawUserTeachSkills) {
+    const norm = normalizeSkillName(s.name);
+    if (norm && !seenUserSkills.has(norm.toLowerCase())) {
+      seenUserSkills.add(norm.toLowerCase());
+      userTeachSkills.push({
+        name: norm,
+        rawName: s.name,
+        level: s.level || 'INTERMEDIATE',
+        category: s.category || 'General',
+      });
+    }
+  }
 
   // 4. Candidate's learning interests
-  const candidateLearnInterests = (candidate.learningInterests || []).map((i) => ({
-    name: normalizeSkillName(i.name),
-    rawName: i.name,
-    priority: i.priority || 'HIGH',
-  }));
+  const candidateLearnInterests = (candidate.learningInterests || [])
+    .filter((i) => i && typeof i.name === 'string' && i.name.trim().length >= 2)
+    .map((i) => ({
+      name: normalizeSkillName(i.name),
+      rawName: i.name,
+      priority: i.priority || 'HIGH',
+    }));
 
   // ==========================================
   // A. SKILL NEED COVERAGE (What candidate teaches that user needs)
@@ -212,6 +251,27 @@ export const calculateMatchScore = (user, candidate, goal = null) => {
     explanation.push(`✓ Verified newcomer ready for initial knowledge exchange`);
   } else if (reviews > 0) {
     explanation.push(`✓ Established community trust (${rating.toFixed(1)}★ across ${reviews} peer reviews)`);
+  }
+
+  // If there is zero skill match in both directions (no need coverage and no reciprocity),
+  // availability and reputation alone cannot make an unrelated peer a match
+  if (matchedSkills.length === 0 && reciprocalSkills.length === 0) {
+    return {
+      overallScore: 0,
+      matchType: 'NO_SKILL_MATCH',
+      explanation: ['No overlapping skill or goal compatibility found'],
+      matchedSkills: [],
+      reciprocalSkills: [],
+      availabilityCompatibility: isAvailCompatible,
+      skillCompatibility: 0,
+      scoreBreakdown: {
+        reciprocityScore: 0,
+        needScore: 0,
+        availabilityScore,
+        proficiencyScore,
+        reliabilityScore,
+      },
+    };
   }
 
   // ==========================================
@@ -351,9 +411,20 @@ export const generateMatchesForUser = async (userId, goalId = null) => {
   // - Exclude suspended accounts
   // - Exclude already active connections
   // - Exclude demo accounts for real users (unless current user is a demo account)
+  // - MUST possess at least one valid teachable skill (not empty, not placeholder)
   const candidateQuery = {
     _id: { $ne: userId, $nin: Array.from(connectedPeerIds) },
     isSuspended: { $ne: true },
+    skills: {
+      $elemMatch: {
+        type: { $in: ['TEACH', 'both', 'teach', 'BOTH'] },
+        name: {
+          $exists: true,
+          $type: 'string',
+          $nin: ['', ' ', 'Skills', 'skills', 'Skill', 'skill', 'None', 'none', 'N/A', 'n/a', 'Placeholder', 'placeholder', 'null', 'undefined'],
+        },
+      },
+    },
   };
 
   if (!user.isDemo) {
@@ -363,15 +434,22 @@ export const generateMatchesForUser = async (userId, goalId = null) => {
     candidateQuery.isDemo = true;
   }
 
-  const candidates = await User.find(candidateQuery).select('-password');
+  const rawCandidates = await User.find(candidateQuery).select('-password');
+  // Secondary authoritative filter ensuring candidate has at least one valid teachable skill
+  const candidates = rawCandidates.filter((c) => Array.isArray(c.skills) && c.skills.some(isValidTeachableSkill));
 
   const generatedMatches = [];
+  const seenCandidateIds = new Set();
 
   for (const candidate of candidates) {
+    const candIdStr = candidate._id.toString();
+    if (seenCandidateIds.has(candIdStr)) continue;
+
     const analysis = calculateMatchScore(user, candidate, goal);
 
     // Save recommendations with reasonable compatibility threshold (>= 25)
     if (analysis.overallScore >= 25) {
+      seenCandidateIds.add(candIdStr);
       const matchData = {
         user: userId,
         candidate: candidate._id,

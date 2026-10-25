@@ -32,6 +32,10 @@ export default {
           800: '#3730a3',
           900: '#312e81',
         },
+        slate: {
+          750: '#253349',
+          850: '#161f30',
+        },
         darkSurface: '#0F172A',
         cardBorder: '#E2E8F0',
       },

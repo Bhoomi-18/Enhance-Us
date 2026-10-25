@@ -370,17 +370,42 @@ export const SessionsPage = () => {
                       </>
                     )}
                     {sess.status === 'COMPLETED' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setReviewError(null);
-                          setSelectedSessionForReview(sess);
-                        }}
-                        leftIcon={Star}
-                      >
-                        Leave Review
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setReviewError(null);
+                            setSelectedSessionForReview(sess);
+                          }}
+                          leftIcon={Star}
+                        >
+                          Leave Review
+                        </Button>
+                        {sess.goal ? (
+                          <Link to={`/goals/${sess.goal?._id || sess.goal}`}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={CheckCircle2}
+                              className="border-emerald-500 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                            >
+                              Update Goal Progress
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Link to="/goals">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={CheckCircle2}
+                              className="border-teal-500 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40"
+                            >
+                              Update Goal Progress
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

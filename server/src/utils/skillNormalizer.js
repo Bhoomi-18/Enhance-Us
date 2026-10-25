@@ -203,9 +203,50 @@ export const calculateProficiencyCompatibility = (teacherLevel, learnerLevel) =>
   return 25; // Significant deficiency
 };
 
+export const INVALID_SKILL_PLACEHOLDERS = new Set([
+  'skills',
+  'skill',
+  'general',
+  'none',
+  'n/a',
+  'na',
+  'placeholder',
+  'undefined',
+  'null',
+  'unknown',
+  'test',
+  'teaching',
+  'learning',
+  'all',
+]);
+
+/**
+ * Validates whether a skill record represents a genuine, non-placeholder teachable skill.
+ */
+export const isValidTeachableSkill = (skill) => {
+  if (!skill) return false;
+  const rawName = typeof skill === 'string' ? skill : skill.name;
+  if (!rawName || typeof rawName !== 'string') return false;
+  const cleaned = rawName.trim();
+  if (cleaned.length < 2) return false;
+  if (INVALID_SKILL_PLACEHOLDERS.has(cleaned.toLowerCase())) return false;
+
+  // If skill is an object with a type, ensure it allows teaching
+  if (typeof skill === 'object' && skill.type) {
+    const typeUpper = String(skill.type).toUpperCase();
+    if (typeUpper !== 'TEACH' && typeUpper !== 'BOTH') {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export default {
   normalizeSkillName,
   areSkillsCompatible,
   calculateProficiencyCompatibility,
+  isValidTeachableSkill,
+  INVALID_SKILL_PLACEHOLDERS,
   LEVEL_NUMERIC,
 };

@@ -20,3 +20,7 @@ export const getConnections = async () => {
   return await apiClient.get('/exchanges/connections');
 };
 
+export const getPendingRequestStatus = async (peerId) => {
+  return await apiClient.get(`/exchanges/pending-status/${peerId}`);
+};
+

@@ -273,6 +273,119 @@ export const deleteGoal = async (workspaceId, goalId) => {
   return { success: true };
 };
 
+export const toggleGoalStatus = async (workspaceId, goalId, { status }) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const goal = (ws.data.goals || []).find((g) => g._id === goalId);
+  if (!goal) {
+    throw new ApiError(404, 'Goal not found in demo workspace');
+  }
+
+  goal.status = status;
+  if (status === 'COMPLETED') {
+    goal.progress = 100;
+  } else {
+    if (goal.requiredSkills && goal.requiredSkills.length > 0) {
+      const completedCount = goal.requiredSkills.filter((s) => s.isCompleted).length;
+      goal.progress = Math.round((completedCount / goal.requiredSkills.length) * 100);
+    } else {
+      goal.progress = 0;
+    }
+  }
+  goal.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return goal;
+};
+
+export const toggleRequiredSkillCompletion = async (workspaceId, goalId, { skillId, skillName, isCompleted }) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const goal = (ws.data.goals || []).find((g) => g._id === goalId);
+  if (!goal) {
+    throw new ApiError(404, 'Goal not found in demo workspace');
+  }
+
+  goal.requiredSkills = goal.requiredSkills || [];
+  const skill = goal.requiredSkills.find(
+    (s) => (skillId && s._id === skillId) || (skillName && s.name.toLowerCase() === skillName.toLowerCase())
+  );
+
+  if (!skill) {
+    throw new ApiError(404, 'Required skill not found in goal');
+  }
+
+  skill.isCompleted = isCompleted;
+  skill.completedAt = isCompleted ? new Date().toISOString() : null;
+
+  const total = goal.requiredSkills.length;
+  const completed = goal.requiredSkills.filter((s) => s.isCompleted).length;
+  goal.progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+  if (goal.progress === 100) {
+    goal.status = 'COMPLETED';
+  } else if (goal.status === 'COMPLETED' && !isCompleted) {
+    goal.status = 'ACTIVE';
+  }
+  goal.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return goal;
+};
+
+export const addRequiredSkillToGoal = async (workspaceId, goalId, { name, category, level, importance }) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const goal = (ws.data.goals || []).find((g) => g._id === goalId);
+  if (!goal) {
+    throw new ApiError(404, 'Goal not found in demo workspace');
+  }
+
+  goal.requiredSkills = goal.requiredSkills || [];
+  const trimmedName = name.trim();
+  const exists = goal.requiredSkills.some((s) => s.name.toLowerCase() === trimmedName.toLowerCase());
+  if (exists) {
+    throw new ApiError(400, `Skill "${trimmedName}" is already listed in this goal.`);
+  }
+
+  goal.requiredSkills.push({
+    _id: 'rsk_' + Date.now(),
+    name: trimmedName,
+    category: category || 'General',
+    level: level || 'INTERMEDIATE',
+    importance: importance || 'HIGH',
+    isCompleted: false,
+    completedAt: null,
+  });
+
+  const total = goal.requiredSkills.length;
+  const completed = goal.requiredSkills.filter((s) => s.isCompleted).length;
+  goal.progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+  if (goal.status === 'COMPLETED' && goal.progress < 100) {
+    goal.status = 'ACTIVE';
+  }
+  goal.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return goal;
+};
+
+export const removeRequiredSkillFromGoal = async (workspaceId, goalId, { skillId, skillName }) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const goal = (ws.data.goals || []).find((g) => g._id === goalId);
+  if (!goal) {
+    throw new ApiError(404, 'Goal not found in demo workspace');
+  }
+
+  goal.requiredSkills = (goal.requiredSkills || []).filter(
+    (s) => !((skillId && s._id === skillId) || (skillName && s.name.toLowerCase() === skillName.toLowerCase()))
+  );
+
+  const total = goal.requiredSkills.length;
+  const completed = goal.requiredSkills.filter((s) => s.isCompleted).length;
+  goal.progress = total > 0 ? Math.round((completed / total) * 100) : goal.status === 'COMPLETED' ? 100 : 0;
+  goal.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return goal;
+};
+
 /* ==========================================================================
  * ROADMAPS & MILESTONES
  * ========================================================================== */
@@ -551,26 +664,142 @@ export const getMatchById = async (workspaceId, matchId) => {
 
 export const createExchangeRequest = async (workspaceId, requestData) => {
   const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.exchangeRequests = ws.data.exchangeRequests || [];
+
+  const recipientId = (requestData.recipientId || requestData.recipient)?.toString();
+  if (recipientId === DEMO_USER_ID) {
+    throw new ApiError(400, 'Cannot send exchange request to yourself');
+  }
+
+  // Check pending request constraint
+  const existingPending = ws.data.exchangeRequests.find(
+    (r) =>
+      r.status === 'PENDING' &&
+      ((r.sender?._id || r.sender)?.toString() === DEMO_USER_ID &&
+       (r.recipient?._id || r.recipient)?.toString() === recipientId)
+  );
+
+  if (existingPending) {
+    throw new ApiError(409, 'You already have an outstanding pending session request to this peer.');
+  }
+
+  const messageText = requestData.message || requestData.proposedExchange || 'Looking forward to exchanging skills!';
+  if (messageText.length > 500) {
+    throw new ApiError(400, 'Message cannot exceed 500 characters');
+  }
+
   const newRequest = {
     _id: 'demo_req_' + Date.now(),
-    sender: DEMO_USER_ID,
-    recipient: requestData.recipientId,
+    sender: {
+      _id: DEMO_USER_ID,
+      name: ws.data.profile?.name || 'Alex Morgan',
+      avatar: ws.data.profile?.avatar,
+      skills: ws.data.profile?.skills || [],
+    },
+    recipient: recipientId,
     goal: requestData.goalId,
     offeredSkill: requestData.offeredSkill,
     requestedSkill: requestData.requestedSkill,
-    proposedExchange: requestData.proposedExchange || 'Looking forward to exchanging skills!',
+    message: messageText,
+    proposedExchange: messageText,
+    isDirectRequest: Boolean(requestData.isDirectRequest),
     status: 'PENDING',
     createdAt: new Date().toISOString(),
   };
 
-  // Update match status to REQUESTED if present
-  const match = (ws.data.matches || []).find((m) => (m.candidate?._id || m.candidate) === requestData.recipientId);
+  ws.data.exchangeRequests.push(newRequest);
+
+  // Update match status to PENDING if present
+  const match = (ws.data.matches || []).find((m) => (m.candidate?._id || m.candidate) === recipientId);
   if (match) {
     match.status = 'PENDING';
   }
 
   await saveWorkspace(ws);
   return newRequest;
+};
+
+export const getUserExchangeRequests = async (workspaceId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.exchangeRequests = ws.data.exchangeRequests || [];
+  return ws.data.exchangeRequests;
+};
+
+export const getPendingRequestStatus = async (workspaceId, peerId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.exchangeRequests = ws.data.exchangeRequests || [];
+  const peerIdStr = peerId?.toString();
+
+  const pendingRequest = ws.data.exchangeRequests.find(
+    (r) =>
+      r.status === 'PENDING' &&
+      ((r.sender?._id || r.sender)?.toString() === DEMO_USER_ID &&
+       (r.recipient?._id || r.recipient)?.toString() === peerIdStr)
+  );
+
+  return {
+    hasPendingRequest: Boolean(pendingRequest),
+    pendingRequest: pendingRequest || null,
+  };
+};
+
+export const acceptExchangeRequest = async (workspaceId, requestId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.exchangeRequests = ws.data.exchangeRequests || [];
+
+  const req = ws.data.exchangeRequests.find((r) => r._id === requestId);
+  if (!req) {
+    throw new ApiError(404, 'Exchange request not found in workspace');
+  }
+
+  req.status = 'ACCEPTED';
+  req.updatedAt = new Date().toISOString();
+
+  // Create active connection if not exists
+  ws.data.connections = ws.data.connections || [];
+  const senderId = (req.sender?._id || req.sender)?.toString();
+  const existingConn = ws.data.connections.find((c) =>
+    (c.participants || []).some((p) => (p._id || p)?.toString() === senderId)
+  );
+
+  if (!existingConn) {
+    const senderPeer = (ws.data.peers || []).find((p) => p._id === senderId) || {
+      _id: senderId,
+      name: req.sender?.name || 'Peer',
+    };
+    ws.data.connections.push({
+      _id: 'demo_conn_' + Date.now(),
+      participants: [
+        { _id: DEMO_USER_ID, name: ws.data.profile?.name || 'Alex Morgan', avatar: ws.data.profile?.avatar },
+        senderPeer,
+      ],
+      skills: {
+        userASkill: req.offeredSkill || 'Teaching',
+        userBSkill: req.requestedSkill || 'Learning',
+      },
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  await saveWorkspace(ws);
+  return req;
+};
+
+export const declineExchangeRequest = async (workspaceId, requestId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.exchangeRequests = ws.data.exchangeRequests || [];
+
+  const req = ws.data.exchangeRequests.find((r) => r._id === requestId);
+  if (!req) {
+    throw new ApiError(404, 'Exchange request not found in workspace');
+  }
+
+  req.status = 'DECLINED';
+  req.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return req;
 };
 
 export const getConnections = async (workspaceId) => {

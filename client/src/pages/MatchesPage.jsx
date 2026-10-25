@@ -298,7 +298,10 @@ export const MatchesPage = () => {
                     <p className="font-extrabold text-slate-900 dark:text-slate-100 text-xs">
                       {matchedSkills.length > 0
                         ? matchedSkills.map((m) => m.candidateTeachSkill).join(', ')
-                        : candidate.skills?.map((s) => s.name).join(', ') || 'Skills'}
+                        : (candidate.skills || [])
+                            .filter((s) => !s.type || s.type === 'TEACH' || s.type === 'both')
+                            .map((s) => s.name)
+                            .join(', ') || 'No teaching skills listed'}
                     </p>
                     <span className="text-[10px] text-teal-600 dark:text-teal-400 mt-1 block">
                       Fills your requested capability gap

@@ -45,6 +45,7 @@ export const SettingsPage = () => {
 
   // V3.5 Notification Preferences State
   const [notificationPreferences, setNotificationPreferences] = useState({
+    emailNotifications: true,
     sessionUpdates: true,
     goalReminders: true,
     peerActivity: true,
@@ -313,6 +314,12 @@ export const SettingsPage = () => {
               ) : (
                 <div className="space-y-4">
                   {[
+                    {
+                      key: 'emailNotifications',
+                      title: 'Email Notifications (Optional Delivery)',
+                      description: 'Receive email copies of session updates, match proposals, and exchange requests. Turn off to receive in-app notifications only. (Account security emails like password resets are always delivered).',
+                      isMaster: true,
+                    },
                     {
                       key: 'sessionUpdates',
                       title: 'Session Updates & Schedule Alerts',

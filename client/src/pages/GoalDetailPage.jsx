@@ -14,13 +14,25 @@ import {
   HelpCircle,
   Users,
   Compass,
+  CheckSquare,
+  Square,
+  Plus,
+  RotateCcw,
 } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { getGoal, deleteGoal } from '../services/goalService';
+import {
+  getGoal,
+  deleteGoal,
+  toggleGoalStatus,
+  toggleSkillCompletion,
+  addRequiredSkill,
+  removeRequiredSkill,
+} from '../services/goalService';
 
 export const GoalDetailPage = () => {
   const { id } = useParams();
@@ -30,6 +42,16 @@ export const GoalDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Add Skill Modal State
+  const [isAddSkillModalOpen, setIsAddSkillModalOpen] = useState(false);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillCategory, setNewSkillCategory] = useState('General');
+  const [newSkillLevel, setNewSkillLevel] = useState('INTERMEDIATE');
+  const [newSkillImportance, setNewSkillImportance] = useState('HIGH');
+  const [addingSkill, setAddingSkill] = useState(false);
+  const [skillError, setSkillError] = useState(null);
 
   useEffect(() => {
     const fetchGoalDetail = async () => {
@@ -64,6 +86,157 @@ export const GoalDetailPage = () => {
     }
   };
 
+  const handleToggleGoalStatus = async () => {
+    if (!goal) return;
+    const isCurrentlyCompleted = goal.status === 'COMPLETED';
+    const nextStatus = isCurrentlyCompleted ? 'ACTIVE' : 'COMPLETED';
+    const confirmMessage = isCurrentlyCompleted
+      ? 'Unmark this goal as completed and reactivate it?'
+      : 'Mark this goal as completed? Progress will be marked complete in your profile achievements.';
+    if (!window.confirm(confirmMessage)) return;
+
+    setUpdatingStatus(true);
+    const previousGoal = { ...goal };
+    // Optimistic update
+    setGoal((prev) => ({
+      ...prev,
+      status: nextStatus,
+      progress:
+        nextStatus === 'COMPLETED'
+          ? 100
+          : prev.requiredSkills?.length
+          ? Math.round(
+              (prev.requiredSkills.filter((s) => s.isCompleted).length /
+                prev.requiredSkills.length) *
+                100
+            )
+          : 0,
+    }));
+
+    try {
+      const res = await toggleGoalStatus(id, nextStatus);
+      if (res?.data?.goal) {
+        setGoal(res.data.goal);
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || err.message || 'Failed to update goal completion status');
+      setGoal(previousGoal); // Rollback
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleToggleSkillCompletion = async (skill) => {
+    if (!goal) return;
+    const isCurrentlyCompleted = Boolean(skill.isCompleted);
+    const nextCompleted = !isCurrentlyCompleted;
+
+    const previousGoal = JSON.parse(JSON.stringify(goal));
+
+    // Optimistic update
+    const updatedSkills = (goal.requiredSkills || []).map((s) => {
+      if ((s._id && s._id === skill._id) || s.name.toLowerCase() === skill.name.toLowerCase()) {
+        return {
+          ...s,
+          isCompleted: nextCompleted,
+          completedAt: nextCompleted ? new Date().toISOString() : null,
+        };
+      }
+      return s;
+    });
+    const completedCount = updatedSkills.filter((s) => s.isCompleted).length;
+    const derivedProgress = updatedSkills.length
+      ? Math.round((completedCount / updatedSkills.length) * 100)
+      : 0;
+
+    setGoal((prev) => ({
+      ...prev,
+      requiredSkills: updatedSkills,
+      progress: derivedProgress,
+      status:
+        derivedProgress === 100
+          ? 'COMPLETED'
+          : prev.status === 'COMPLETED' && !nextCompleted
+          ? 'ACTIVE'
+          : prev.status,
+    }));
+
+    try {
+      const res = await toggleSkillCompletion(id, {
+        skillId: skill._id,
+        skillName: skill.name,
+        isCompleted: nextCompleted,
+      });
+      if (res?.data?.goal) {
+        setGoal(res.data.goal);
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || err.message || 'Failed to update skill completion status');
+      setGoal(previousGoal); // Rollback
+    }
+  };
+
+  const handleAddSkill = async (e) => {
+    e.preventDefault();
+    if (!newSkillName.trim()) return;
+
+    setAddingSkill(true);
+    setSkillError(null);
+    try {
+      const res = await addRequiredSkill(id, {
+        name: newSkillName.trim(),
+        category: newSkillCategory.trim() || 'General',
+        level: newSkillLevel,
+        importance: newSkillImportance,
+      });
+      if (res?.data?.goal) {
+        setGoal(res.data.goal);
+      }
+      setIsAddSkillModalOpen(false);
+      setNewSkillName('');
+    } catch (err) {
+      setSkillError(err?.response?.data?.message || err.message || 'Failed to add required skill');
+    } finally {
+      setAddingSkill(false);
+    }
+  };
+
+  const handleRemoveSkill = async (skill) => {
+    const isCompleted = Boolean(skill.isCompleted);
+    const confirmMessage = isCompleted
+      ? `This skill "${skill.name}" is currently marked as completed! Deleting it will remove this progress and recalculate your goal. Are you sure?`
+      : `Are you sure you want to remove "${skill.name}" from required skills?`;
+    if (!window.confirm(confirmMessage)) return;
+
+    const previousGoal = JSON.parse(JSON.stringify(goal));
+    // Optimistic removal
+    const remainingSkills = (goal.requiredSkills || []).filter(
+      (s) => !((s._id && s._id === skill._id) || s.name.toLowerCase() === skill.name.toLowerCase())
+    );
+    const completedCount = remainingSkills.filter((s) => s.isCompleted).length;
+    const derivedProgress = remainingSkills.length
+      ? Math.round((completedCount / remainingSkills.length) * 100)
+      : goal.status === 'COMPLETED'
+      ? 100
+      : 0;
+
+    setGoal((prev) => ({
+      ...prev,
+      requiredSkills: remainingSkills,
+      progress: derivedProgress,
+    }));
+
+    try {
+      const res = await removeRequiredSkill(id, skill.name, skill._id);
+      if (res?.data?.goal) {
+        setGoal(res.data.goal);
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || err.message || 'Failed to remove skill');
+      setGoal(previousGoal); // Rollback
+    }
+  };
+
   if (loading) {
     return (
       <PageContainer>
@@ -94,17 +267,12 @@ export const GoalDetailPage = () => {
   const partial = skillGaps.partiallyKnownSkills || [];
   const missing = skillGaps.missingSkills || [];
 
-  const roadmapSkills = aiAnalysis?.skills && aiAnalysis.skills.length > 0
-    ? aiAnalysis.skills
-    : requiredSkills.map((s, idx) => ({
-        name: s.name,
-        category: s.category || 'General',
-        level: s.level || 'INTERMEDIATE',
-        importance: s.importance || 'HIGH',
-        explanation: 'Essential competency required to accomplish this goal.',
-        learningOrder: idx + 1,
-        prerequisites: [],
-      }));
+  const roadmapSkills =
+    goal.requiredSkills && goal.requiredSkills.length > 0
+      ? goal.requiredSkills
+      : aiAnalysis?.skills && aiAnalysis.skills.length > 0
+      ? aiAnalysis.skills
+      : [];
 
   const milestones = aiAnalysis?.milestones || [];
   const estimatedEffort = aiAnalysis?.estimatedEffort;
@@ -118,7 +286,29 @@ export const GoalDetailPage = () => {
         <Link to="/goals" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800">
           <ArrowLeft className="w-4 h-4" /> Back to All Goals
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {goal.status === 'COMPLETED' ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleToggleGoalStatus}
+              isLoading={updatingStatus}
+              leftIcon={RotateCcw}
+              className="border-amber-300 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+            >
+              Reactivate Goal
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleToggleGoalStatus}
+              isLoading={updatingStatus}
+              leftIcon={CheckCircle2}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+            >
+              Mark Goal Complete
+            </Button>
+          )}
           <Link to="/roadmaps">
             <Button size="sm" variant="outline" leftIcon={Compass} className="border-teal-300 text-teal-700 hover:bg-teal-50">
               AI Roadmap
@@ -222,35 +412,86 @@ export const GoalDetailPage = () => {
               Sequenced learning order with prerequisite relationships and beginner-friendly breakdowns.
             </p>
           </div>
-          {estimatedEffort && (
-            <div className="hidden sm:flex items-center gap-3">
-              <Badge variant="teal" icon={Clock}>{estimatedEffort.estimatedHours || '40-60 hrs'}</Badge>
-              <Badge variant="indigo" icon={Calendar}>{estimatedEffort.timelineRecommendation || '4-8 wks'}</Badge>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              leftIcon={Plus}
+              onClick={() => {
+                setSkillError(null);
+                setNewSkillName('');
+                setIsAddSkillModalOpen(true);
+              }}
+              className="border-teal-500 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 text-xs font-semibold"
+            >
+              Add Required Skill
+            </Button>
+            {estimatedEffort && (
+              <div className="hidden sm:flex items-center gap-3">
+                <Badge variant="teal" icon={Clock}>{estimatedEffort.estimatedHours || '40-60 hrs'}</Badge>
+                <Badge variant="indigo" icon={Calendar}>{estimatedEffort.timelineRecommendation || '4-8 wks'}</Badge>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
           {roadmapSkills.map((sk, idx) => {
             const isKnown = known.some((k) => k.name.toLowerCase() === sk.name.toLowerCase());
+            const isCompleted = Boolean(sk.isCompleted);
             return (
               <div
                 key={idx}
-                className="p-4 bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700 rounded-2xl shadow-subtle dark:shadow-none hover:border-teal-300 dark:hover:border-teal-600 transition-colors"
+                className={`p-4 bg-white dark:bg-slate-800/80 border rounded-2xl shadow-subtle dark:shadow-none transition-colors ${
+                  isCompleted
+                    ? 'border-emerald-300 dark:border-emerald-800/70 bg-emerald-50/10 dark:bg-emerald-950/10'
+                    : 'border-slate-200/90 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-600'
+                }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSkillCompletion(sk)}
+                      className="mt-0.5 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      title={isCompleted ? 'Mark skill as incomplete' : 'Mark skill as completed'}
+                    >
+                      {isCompleted ? (
+                        <CheckSquare className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Square className="w-5 h-5 text-slate-400 dark:text-slate-500 hover:text-slate-600" />
+                      )}
+                    </button>
                     <span className="w-7 h-7 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 font-extrabold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                       #{sk.learningOrder || idx + 1}
                     </span>
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">{sk.name}</span>
-                        <Badge variant={isKnown ? 'emerald' : 'rose'} className="text-[10px]">
-                          {isKnown ? '✓ Known Skill' : 'Skill Gap'}
-                        </Badge>
-                        <Badge variant="slate" className="text-[10px]">{sk.category}</Badge>
-                        <Badge variant="slate" className="text-[10px]">{sk.level}</Badge>
+                        <span
+                          className={`font-extrabold text-sm ${
+                            isCompleted
+                              ? 'line-through text-slate-500 dark:text-slate-400'
+                              : 'text-slate-900 dark:text-slate-100'
+                          }`}
+                        >
+                          {sk.name}
+                        </span>
+                        {isCompleted ? (
+                          <Badge variant="emerald" className="text-[10px]">
+                            ✓ Completed
+                          </Badge>
+                        ) : (
+                          <Badge variant={isKnown ? 'emerald' : 'rose'} className="text-[10px]">
+                            {isKnown ? '✓ Known Skill' : 'Skill Gap'}
+                          </Badge>
+                        )}
+                        <Badge variant="slate" className="text-[10px]">{sk.category || 'General'}</Badge>
+                        <Badge variant="slate" className="text-[10px]">{sk.level || 'INTERMEDIATE'}</Badge>
+                        {sk.importance && (
+                          <Badge variant={sk.importance === 'CRITICAL' ? 'rose' : 'indigo'} className="text-[10px]">
+                            {sk.importance}
+                          </Badge>
+                        )}
                       </div>
 
                       {sk.explanation && (
@@ -266,6 +507,17 @@ export const GoalDetailPage = () => {
                         </div>
                       )}
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-start">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSkill(sk)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors"
+                      title="Remove required skill from goal"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -437,6 +689,105 @@ export const GoalDetailPage = () => {
         </Card>
 
       </div>
+
+      {/* ADD REQUIRED SKILL MODAL */}
+      <Modal
+        isOpen={isAddSkillModalOpen}
+        onClose={() => setIsAddSkillModalOpen(false)}
+        title="Add Required Skill to Goal"
+      >
+        <form onSubmit={handleAddSkill} className="space-y-4 pt-2">
+          {skillError && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300">
+              {skillError}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Skill Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={newSkillName}
+              onChange={(e) => setNewSkillName(e.target.value)}
+              placeholder="e.g. Docker, GraphQL, System Design"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Category
+              </label>
+              <input
+                type="text"
+                value={newSkillCategory}
+                onChange={(e) => setNewSkillCategory(e.target.value)}
+                placeholder="e.g. Backend, DevOps"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Target Proficiency
+              </label>
+              <select
+                value={newSkillLevel}
+                onChange={(e) => setNewSkillLevel(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="BEGINNER">BEGINNER</option>
+                <option value="INTERMEDIATE">INTERMEDIATE</option>
+                <option value="ADVANCED">ADVANCED</option>
+                <option value="EXPERT">EXPERT</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Importance
+            </label>
+            <select
+              value={newSkillImportance}
+              onChange={(e) => setNewSkillImportance(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="CRITICAL">CRITICAL (Core requirement)</option>
+              <option value="HIGH">HIGH (Strongly recommended)</option>
+              <option value="MEDIUM">MEDIUM (Helpful)</option>
+              <option value="LOW">LOW (Optional)</option>
+            </select>
+          </div>
+
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Adding a required skill updates the goal's total competencies and recalculates completion progress automatically.
+          </p>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddSkillModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              isLoading={addingSkill}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              Add Skill
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </PageContainer>
   );
 };

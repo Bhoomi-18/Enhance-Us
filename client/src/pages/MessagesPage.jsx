@@ -176,18 +176,33 @@ export const MessagesPage = () => {
                   <Card key={req._id} className="border-teal-200 dark:border-teal-900/40 bg-gradient-to-r from-white to-teal-50/30 dark:from-slate-900 dark:to-teal-950/20">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                       <div>
-                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{req.sender?.name || 'Peer Candidate'}</span>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Goal: {req.goal?.title || 'Active Goal'}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{req.sender?.name || 'Peer Candidate'}</span>
+                          {req.createdAt && (
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                              &bull; {new Date(req.createdAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {req.goal?.title
+                            ? `Goal: ${req.goal.title}`
+                            : req.isDirectRequest
+                            ? 'Direct Profile Session Request'
+                            : 'Peer Exchange Request'}
+                        </p>
                       </div>
-                      <Badge variant="teal">Exchange Proposal</Badge>
+                      <Badge variant={req.isDirectRequest ? 'indigo' : 'teal'}>
+                        {req.isDirectRequest ? 'Direct Session Request' : 'Exchange Proposal'}
+                      </Badge>
                     </div>
 
                     <div className="p-3 bg-white dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs mb-4">
-                      <p className="text-slate-700 dark:text-slate-300 italic">"{req.proposedExchange}"</p>
-                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 font-semibold text-teal-700 dark:text-teal-400 flex items-center gap-2">
-                        <span>They offer: <strong>{req.offeredSkill}</strong></span>
+                      <p className="text-slate-800 dark:text-slate-200 italic leading-relaxed">"{req.proposedExchange}"</p>
+                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 font-semibold text-teal-700 dark:text-teal-400 flex flex-wrap items-center gap-2">
+                        <span>They offer: <strong className="text-slate-900 dark:text-slate-100">{req.offeredSkill}</strong></span>
                         <span>&harr;</span>
-                        <span>They request: <strong>{req.requestedSkill}</strong></span>
+                        <span>They request: <strong className="text-slate-900 dark:text-slate-100">{req.requestedSkill}</strong></span>
                       </div>
                     </div>
 
@@ -195,7 +210,7 @@ export const MessagesPage = () => {
                       <Button variant="outline" size="sm" onClick={() => handleDeclineRequest(req._id)} leftIcon={X}>
                         Decline
                       </Button>
-                      <Button size="sm" onClick={() => handleAcceptRequest(req._id)} leftIcon={Check}>
+                      <Button size="sm" onClick={() => handleAcceptRequest(req._id)} leftIcon={Check} className="bg-teal-600 hover:bg-teal-700 text-white">
                         Accept & Start Chat
                       </Button>
                     </div>
@@ -217,11 +232,22 @@ export const MessagesPage = () => {
                 {requests.outgoing.map((req) => (
                   <div key={req._id} className="p-4 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs shadow-subtle">
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-slate-100">To: {req.recipient?.name || 'Peer'}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">Proposed: Exchanging {req.offeredSkill} for {req.requestedSkill}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-slate-900 dark:text-slate-100">To: {req.recipient?.name || 'Peer'}</p>
+                        {req.createdAt && (
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            &bull; {new Date(req.createdAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {req.proposedExchange
+                          ? `"${req.proposedExchange.slice(0, 60)}${req.proposedExchange.length > 60 ? '...' : ''}" (${req.offeredSkill} ↔ ${req.requestedSkill})`
+                          : `Proposed: Exchanging ${req.offeredSkill} for ${req.requestedSkill}`}
+                      </p>
                     </div>
-                    <Badge variant={req.status === 'ACCEPTED' ? 'emerald' : req.status === 'DECLINED' ? 'rose' : 'slate'}>
-                      {req.status}
+                    <Badge variant={req.status === 'ACCEPTED' ? 'emerald' : req.status === 'DECLINED' ? 'rose' : 'amber'}>
+                      {req.status === 'PENDING' ? 'Pending' : req.status}
                     </Badge>
                   </div>
                 ))}

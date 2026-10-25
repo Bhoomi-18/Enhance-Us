@@ -15,8 +15,16 @@ const requiredSkillSchema = new mongoose.Schema(
       enum: ['HIGH', 'MEDIUM', 'LOW'],
       default: 'HIGH',
     },
+    isCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const goalSchema = new mongoose.Schema(

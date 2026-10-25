@@ -19,7 +19,8 @@ export const createRequest = async (req, res, next) => {
 export const getRequests = async (req, res, next) => {
   try {
     if (req.user?.isDemo && req.user?.workspaceId) {
-      return ApiResponse.success(res, 'Exchange requests retrieved', { sent: [], received: [] });
+      const requests = await demoWorkspaceService.getUserExchangeRequests(req.user.workspaceId);
+      return ApiResponse.success(res, 'Exchange requests retrieved', requests);
     }
     const requests = await exchangeService.getUserExchangeRequests(req.user._id);
     return ApiResponse.success(res, 'Exchange requests retrieved', requests);
@@ -30,6 +31,10 @@ export const getRequests = async (req, res, next) => {
 
 export const acceptRequest = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const result = await demoWorkspaceService.acceptExchangeRequest(req.user.workspaceId, req.params.id);
+      return ApiResponse.success(res, 'Exchange request accepted! Connection established.', result);
+    }
     const result = await exchangeService.acceptExchangeRequest(req.params.id, req.user._id);
     return ApiResponse.success(res, 'Exchange request accepted! Connection established.', result);
   } catch (error) {
@@ -39,8 +44,26 @@ export const acceptRequest = async (req, res, next) => {
 
 export const declineRequest = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const result = await demoWorkspaceService.declineExchangeRequest(req.user.workspaceId, req.params.id);
+      return ApiResponse.success(res, 'Exchange request declined', result);
+    }
     const result = await exchangeService.declineExchangeRequest(req.params.id, req.user._id);
     return ApiResponse.success(res, 'Exchange request declined', result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const checkPendingStatus = async (req, res, next) => {
+  try {
+    const { peerId } = req.params;
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const status = await demoWorkspaceService.getPendingRequestStatus(req.user.workspaceId, peerId);
+      return ApiResponse.success(res, 'Pending request status retrieved', status);
+    }
+    const status = await exchangeService.getPendingRequestStatus(req.user._id, peerId);
+    return ApiResponse.success(res, 'Pending request status retrieved', status);
   } catch (error) {
     next(error);
   }

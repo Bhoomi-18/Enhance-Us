@@ -26,14 +26,17 @@ const exchangeRequestSchema = new mongoose.Schema(
     offeredSkill: {
       type: String,
       required: true,
+      default: 'General Skill Exchange',
     },
     requestedSkill: {
       type: String,
       required: true,
+      default: 'Direct Mentorship Session',
     },
     proposedExchange: {
       type: String,
       required: true,
+      maxlength: [500, 'Exchange proposal cannot exceed 500 characters'],
       default: 'I would like to exchange knowledge with you on EnhanceUs.',
     },
     status: {
@@ -41,10 +44,20 @@ const exchangeRequestSchema = new mongoose.Schema(
       enum: ['PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED'],
       default: 'PENDING',
     },
+    isDirectRequest: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
   }
+);
+
+// Enforce atomic server-side constraint: Exactly ONE pending request per sender-recipient pair
+exchangeRequestSchema.index(
+  { sender: 1, recipient: 1 },
+  { unique: true, partialFilterExpression: { status: 'PENDING' } }
 );
 
 export const ExchangeRequest = mongoose.model('ExchangeRequest', exchangeRequestSchema);

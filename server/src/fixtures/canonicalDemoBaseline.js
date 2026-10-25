@@ -19,7 +19,7 @@
  * Always clone via getCanonicalBaseline() before mutating in a workspace.
  */
 
-export const BASELINE_VERSION = '3.5.0';
+export const BASELINE_VERSION = '3.5.1';
 
 export const DEMO_USER_ID = 'demo_user_canonical_001';
 export const DEMO_PEER_ID = 'demo_peer_sarah_002';
@@ -50,6 +50,7 @@ export const CANONICAL_DEMO_BASELINE = {
       peerActivity: true,
       circleActivity: true,
       platformAnnouncements: true,
+      emailNotifications: true,
     },
     sessionsCompleted: 4,
     hoursTaught: 14,
@@ -147,11 +148,11 @@ export const CANONICAL_DEMO_BASELINE = {
       description: 'Create an end-to-end full-stack SaaS platform incorporating clean UI/UX components, scalable Node.js microservices, and high-converting product design.',
       status: 'ACTIVE',
       requiredSkills: [
-        { name: 'React', category: 'Frontend', level: 'ADVANCED', importance: 'HIGH' },
-        { name: 'TypeScript', category: 'Frontend', level: 'ADVANCED', importance: 'HIGH' },
-        { name: 'UI/UX Design', category: 'Design', level: 'INTERMEDIATE', importance: 'HIGH' },
-        { name: 'Figma Prototyping', category: 'Design', level: 'INTERMEDIATE', importance: 'HIGH' },
-        { name: 'Docker', category: 'Infrastructure', level: 'INTERMEDIATE', importance: 'MEDIUM' },
+        { _id: 'rsk_demo_001', name: 'React', category: 'Frontend', level: 'ADVANCED', importance: 'HIGH', isCompleted: true, completedAt: '2026-10-02T10:00:00.000Z' },
+        { _id: 'rsk_demo_002', name: 'TypeScript', category: 'Frontend', level: 'ADVANCED', importance: 'HIGH', isCompleted: true, completedAt: '2026-10-02T10:00:00.000Z' },
+        { _id: 'rsk_demo_003', name: 'UI/UX Design', category: 'Design', level: 'INTERMEDIATE', importance: 'HIGH', isCompleted: true, completedAt: '2026-10-15T15:00:00.000Z' },
+        { _id: 'rsk_demo_004', name: 'Figma Prototyping', category: 'Design', level: 'INTERMEDIATE', importance: 'HIGH', isCompleted: false, completedAt: null },
+        { _id: 'rsk_demo_005', name: 'Docker', category: 'Infrastructure', level: 'INTERMEDIATE', importance: 'MEDIUM', isCompleted: false, completedAt: null },
       ],
       userSkillsSnapshot: [
         { name: 'React', level: 'ADVANCED', category: 'Frontend' },
@@ -783,6 +784,27 @@ export const CANONICAL_DEMO_BASELINE = {
 
   // 16. Simulated Feedback Submissions
   feedbackSubmissions: [],
+
+  // 17. Exchange Requests
+  exchangeRequests: [
+    {
+      _id: 'demo_req_001',
+      sender: {
+        _id: DEMO_PEER_ID,
+        name: 'Sarah Chen',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=250',
+        skills: [{ name: 'UI/UX Design', level: 'EXPERT', type: 'TEACH' }],
+      },
+      recipient: DEMO_USER_ID,
+      offeredSkill: 'UI/UX Design',
+      requestedSkill: 'React',
+      message: 'Hi Alex! I noticed your React mentorship skills and would love to exchange Figma design coaching for React state architecture guidance.',
+      proposedExchange: 'Hi Alex! I noticed your React mentorship skills and would love to exchange Figma design coaching for React state architecture guidance.',
+      status: 'PENDING',
+      isDirectRequest: true,
+      createdAt: '2026-10-24T14:00:00.000Z',
+    },
+  ],
 };
 
 /**
