@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import { completeOnboarding } from '../../services/userService';
+import { completeOnboarding, dismissOnboarding } from '../../services/userService';
 import { useAuth } from '../../context/AuthContext';
 
 export const OnboardingTourModal = ({ isOpen, onClose }) => {
@@ -128,19 +128,27 @@ export const OnboardingTourModal = ({ isOpen, onClose }) => {
     },
   ];
 
-  const handleFinishOrDismiss = async (shouldNavigateToGoals = false) => {
+  const handleFinishOrDismiss = async (isCompletion = false) => {
     setIsSubmitting(true);
     try {
-      await completeOnboarding();
-      if (user) {
-        setUser({ ...user, onboardingCompletedAt: new Date().toISOString() });
+      localStorage.setItem('enhanceus_tour_dismissed', 'true');
+      if (isCompletion) {
+        await completeOnboarding();
+        if (user) {
+          setUser({ ...user, onboardingCompletedAt: new Date().toISOString() });
+        }
+      } else {
+        await dismissOnboarding();
+        if (user) {
+          setUser({ ...user, dismissedOnboardingAt: new Date().toISOString() });
+        }
       }
     } catch (e) {
       console.warn('[Onboarding Save Error]', e.message);
     } finally {
       setIsSubmitting(false);
       onClose();
-      if (shouldNavigateToGoals) {
+      if (isCompletion) {
         navigate('/goals');
       }
     }

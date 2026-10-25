@@ -77,6 +77,11 @@ export const getPublicProfile = async (req, res, next) => {
 
 export const completeOnboarding = async (req, res, next) => {
   try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const result = await demoWorkspaceService.completeOnboarding(req.user.workspaceId);
+      return ApiResponse.success(res, 'Onboarding completed successfully', result);
+    }
+
     if (process.env.MOCK_DB === 'true' && User.db?.readyState !== 1) {
       return ApiResponse.success(res, 'Onboarding completed', { onboardingCompletedAt: new Date() });
     }
@@ -90,6 +95,76 @@ export const completeOnboarding = async (req, res, next) => {
     }
 
     return ApiResponse.success(res, 'Onboarding completed successfully', { user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const dismissOnboarding = async (req, res, next) => {
+  try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const result = await demoWorkspaceService.dismissOnboarding(req.user.workspaceId);
+      return ApiResponse.success(res, 'Onboarding dismissed successfully', result);
+    }
+
+    if (process.env.MOCK_DB === 'true' && User.db?.readyState !== 1) {
+      return ApiResponse.success(res, 'Onboarding dismissed', { dismissedOnboardingAt: new Date() });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) throw new ApiError(404, 'User not found');
+
+    user.dismissedOnboardingAt = new Date();
+    await user.save();
+
+    return ApiResponse.success(res, 'Onboarding dismissed successfully', {
+      dismissedOnboardingAt: user.dismissedOnboardingAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDashboardFeed = async (req, res, next) => {
+  try {
+    const { getDashboardFeed: fetchFeed } = await import('../services/retentionService.js');
+    const feed = await fetchFeed({
+      userId: req.user._id,
+      isDemo: req.user.isDemo,
+      workspaceId: req.user.workspaceId,
+    });
+    return ApiResponse.success(res, 'Dashboard retention feed retrieved successfully', feed);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getNotificationPreferences = async (req, res, next) => {
+  try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const preferences = await demoWorkspaceService.getNotificationPreferences(req.user.workspaceId);
+      return ApiResponse.success(res, 'Notification preferences retrieved', { preferences });
+    }
+
+    const { getUserPreferences } = await import('../services/notificationService.js');
+    const preferences = await getUserPreferences(req.user._id);
+    return ApiResponse.success(res, 'Notification preferences retrieved', { preferences });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateNotificationPreferences = async (req, res, next) => {
+  try {
+    const prefs = req.body.preferences || req.body;
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const updated = await demoWorkspaceService.updateNotificationPreferences(req.user.workspaceId, prefs);
+      return ApiResponse.success(res, 'Notification preferences updated successfully', { preferences: updated });
+    }
+
+    const { updateUserPreferences } = await import('../services/notificationService.js');
+    const updated = await updateUserPreferences(req.user._id, prefs);
+    return ApiResponse.success(res, 'Notification preferences updated successfully', { preferences: updated });
   } catch (error) {
     next(error);
   }

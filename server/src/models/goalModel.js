@@ -40,7 +40,7 @@ const goalSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['DRAFT', 'ACTIVE', 'COMPLETED', 'ARCHIVED'],
+      enum: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED'],
       default: 'ACTIVE',
     },
     requiredSkills: [requiredSkillSchema],

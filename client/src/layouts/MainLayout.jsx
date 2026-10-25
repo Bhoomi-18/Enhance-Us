@@ -15,7 +15,15 @@ export const MainLayout = () => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && user && !user.isDemo && !user.onboardingCompletedAt) {
+    const isDismissedLocal = typeof window !== 'undefined' && localStorage.getItem('enhanceus_tour_dismissed') === 'true';
+    if (
+      isAuthenticated &&
+      user &&
+      !user.isDemo &&
+      !user.onboardingCompletedAt &&
+      !user.dismissedOnboardingAt &&
+      !isDismissedLocal
+    ) {
       setShowTour(true);
     } else {
       setShowTour(false);

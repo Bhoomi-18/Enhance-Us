@@ -29,6 +29,8 @@ const notificationSchema = new mongoose.Schema(
         'CIRCLE_ANNOUNCEMENT',
         'CIRCLE_SESSION_SCHEDULED',
         'CIRCLE_ROADMAP_UPDATE',
+        'GOAL_REMINDER',
+        'PLATFORM_ANNOUNCEMENT',
       ],
       required: true,
     },

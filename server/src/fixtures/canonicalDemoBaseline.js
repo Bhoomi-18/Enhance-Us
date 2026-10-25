@@ -19,7 +19,7 @@
  * Always clone via getCanonicalBaseline() before mutating in a workspace.
  */
 
-export const BASELINE_VERSION = '3.4.0';
+export const BASELINE_VERSION = '3.5.0';
 
 export const DEMO_USER_ID = 'demo_user_canonical_001';
 export const DEMO_PEER_ID = 'demo_peer_sarah_002';
@@ -42,6 +42,15 @@ export const CANONICAL_DEMO_BASELINE = {
     timezone: 'America/New_York',
     experienceLevel: 'ADVANCED',
     preferredLearningStyle: 'hands_on',
+    onboardingCompletedAt: '2026-10-01T10:00:00.000Z',
+    dismissedOnboardingAt: null,
+    notificationPreferences: {
+      sessionUpdates: true,
+      goalReminders: true,
+      peerActivity: true,
+      circleActivity: true,
+      platformAnnouncements: true,
+    },
     sessionsCompleted: 4,
     hoursTaught: 14,
     hoursLearned: 12,

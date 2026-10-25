@@ -49,6 +49,13 @@ export const getAdminOverviewMetrics = async () => {
       users: { totalRealUsers: 0, verifiedCount: 0, unverifiedCount: 0, active24h: 0, active7d: 0, active30d: 0 },
       sessions: { total: 0, scheduled: 0, completed: 0, cancelled: 0 },
       feedback: { total: 0, unresolved: 0, averageRating: 0, emailDeliveredCount: 0, emailPendingCount: 0 },
+      retention: {
+        onboardingCompletedCount: 0,
+        onboardingCompletionRate: 0,
+        goalsCreatedCount: 0,
+        goalsCompletedCount: 0,
+        activeGoalsCount: 0,
+      },
       health,
     };
   }
@@ -70,6 +77,10 @@ export const getAdminOverviewMetrics = async () => {
     sessionStats,
     feedbackStats,
     health,
+    onboardingCompletedCount,
+    goalsCreatedCount,
+    goalsCompletedCount,
+    activeGoalsCount,
   ] = await Promise.all([
     // Real Users
     User.countDocuments(realUserFilter),
@@ -116,6 +127,11 @@ export const getAdminOverviewMetrics = async () => {
       },
     ]),
     getSystemHealthSnapshot(),
+    // V3.5 Retention & Onboarding (Strictly Excludes Demo)
+    User.countDocuments({ ...realUserFilter, onboardingCompletedAt: { $ne: null } }),
+    Goal.countDocuments({ isDemo: { $ne: true } }),
+    Goal.countDocuments({ isDemo: { $ne: true }, status: 'COMPLETED' }),
+    Goal.countDocuments({ isDemo: { $ne: true }, status: 'ACTIVE' }),
   ]);
 
   // Map session status counts
@@ -168,6 +184,13 @@ export const getAdminOverviewMetrics = async () => {
       emailFailedCount: fbAggregate.emailFailed || 0,
       emailSimulatedCount: fbAggregate.emailSimulated || 0,
       emailPendingCount: fbAggregate.emailPending || 0,
+    },
+    retention: {
+      onboardingCompletedCount,
+      onboardingCompletionRate: totalRealUsers > 0 ? Math.round((onboardingCompletedCount / totalRealUsers) * 100) : 0,
+      goalsCreatedCount,
+      goalsCompletedCount,
+      activeGoalsCount,
     },
     health,
   };

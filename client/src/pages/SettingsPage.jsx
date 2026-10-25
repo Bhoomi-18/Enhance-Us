@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Settings,
@@ -17,6 +17,7 @@ import {
   Info,
   Check,
   RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
@@ -27,6 +28,7 @@ import Modal from '../components/ui/Modal';
 import ResetDemoModal from '../components/demo/ResetDemoModal';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { getNotificationPreferences, updateNotificationPreferences } from '../services/userService';
 
 export const SettingsPage = () => {
   const navigate = useNavigate();
@@ -40,6 +42,71 @@ export const SettingsPage = () => {
   const [confirmationPhrase, setConfirmationPhrase] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletionError, setDeletionError] = useState(null);
+
+  // V3.5 Notification Preferences State
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    sessionUpdates: true,
+    goalReminders: true,
+    peerActivity: true,
+    circleActivity: true,
+    platformAnnouncements: true,
+  });
+  const [loadingPrefs, setLoadingPrefs] = useState(true);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefFeedback, setPrefFeedback] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPrefs = async () => {
+      try {
+        setLoadingPrefs(true);
+        const res = await getNotificationPreferences();
+        if (isMounted && res?.data?.preferences) {
+          setNotificationPreferences(res.data.preferences);
+        }
+      } catch (err) {
+        console.warn('[Settings Prefs Fetch Error]', err.message);
+      } finally {
+        if (isMounted) setLoadingPrefs(false);
+      }
+    };
+    fetchPrefs();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleTogglePreference = (key) => {
+    setNotificationPreferences((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+    setPrefFeedback(null);
+  };
+
+  const handleSavePreferences = async (e) => {
+    e?.preventDefault?.();
+    setSavingPrefs(true);
+    setPrefFeedback(null);
+    try {
+      const res = await updateNotificationPreferences(notificationPreferences);
+      if (res?.data?.preferences) {
+        setNotificationPreferences(res.data.preferences);
+      }
+      setPrefFeedback({
+        type: 'success',
+        message: 'Notification preferences updated and enforced across your account.',
+      });
+      setTimeout(() => setPrefFeedback(null), 5000);
+    } catch (err) {
+      setPrefFeedback({
+        type: 'error',
+        message: err?.response?.data?.message || err.message || 'Failed to update preferences. Please try again.',
+      });
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
 
   const isDeletePhraseValid = confirmationPhrase === 'DELETE';
   const isFormValid = isDeletePhraseValid && password.trim().length > 0;
@@ -222,19 +289,129 @@ export const SettingsPage = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-indigo-600" />
-                <CardTitle className="text-base">Notifications & Activity Alerts</CardTitle>
+          <Card className="md:col-span-2">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <CardTitle className="text-base">Notification Preferences & Reminders</CardTitle>
+                </div>
+                <CardDescription>
+                  Control which categories of in-app reminders and peer updates you wish to receive.
+                </CardDescription>
               </div>
-              <CardDescription>Manage updates for goal milestones and match proposals.</CardDescription>
+              <Badge variant="teal" className="self-start sm:self-auto">
+                Server-Enforced Opt-Outs
+              </Badge>
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                In-app notifications are active. Email digests and milestone reminders can be configured here once SMTP integration is connected.
-              </p>
+              {loadingPrefs ? (
+                <div className="flex items-center justify-center py-8 text-xs text-slate-500">
+                  <RefreshCw className="w-4 h-4 animate-spin mr-2 text-teal-600" />
+                  Loading your notification settings...
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {[
+                    {
+                      key: 'sessionUpdates',
+                      title: 'Session Updates & Schedule Alerts',
+                      description: 'Reminders and schedule confirmations for upcoming 1-on-1 exchanges and circle sessions.',
+                    },
+                    {
+                      key: 'goalReminders',
+                      title: 'Learning Goal & Milestone Reminders',
+                      description: 'Milestone progress check-ins, adaptive roadmap updates, and learning continuity nudges.',
+                    },
+                    {
+                      key: 'peerActivity',
+                      title: 'Peer Activity & Match Proposals',
+                      description: 'Reciprocal skill match discoveries, exchange requests, peer messages, and reviews.',
+                    },
+                    {
+                      key: 'circleActivity',
+                      title: 'Community & Learning Circles',
+                      description: 'Circle invitations, group workshops, and peer discussion posts.',
+                    },
+                    {
+                      key: 'platformAnnouncements',
+                      title: 'Platform & Product Announcements',
+                      description: 'EnhanceUs product updates, new feature releases, and non-critical maintenance notices.',
+                    },
+                  ].map((cat) => {
+                    const isEnabled = notificationPreferences[cat.key] !== false;
+                    return (
+                      <div
+                        key={cat.key}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <div className="pr-4">
+                          <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 block">
+                            {cat.title}
+                          </span>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                            {cat.description}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isEnabled}
+                          onClick={() => handleTogglePreference(cat.key)}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
+                            isEnabled ? 'bg-teal-600' : 'bg-slate-300 dark:bg-slate-700'
+                          }`}
+                        >
+                          <span className="sr-only">Toggle {cat.title}</span>
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              isEnabled ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  <div className="pt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Account Safety Note:</strong> Critical security notices (such as email verification, password reset, and account security alerts) are always delivered and cannot be disabled.
+                    </span>
+                  </div>
+                </div>
+              )}
             </CardContent>
+            <CardFooter className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+              <div className="text-xs">
+                {prefFeedback && (
+                  <div
+                    className={`flex items-center gap-1.5 font-medium ${
+                      prefFeedback.type === 'success'
+                        ? 'text-teal-600 dark:text-teal-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {prefFeedback.type === 'success' ? (
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    )}
+                    <span>{prefFeedback.message}</span>
+                  </div>
+                )}
+              </div>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={handleSavePreferences}
+                isLoading={savingPrefs}
+                className="bg-teal-600 hover:bg-teal-700 text-white"
+              >
+                Save Preferences
+              </Button>
+            </CardFooter>
           </Card>
         </div>
 

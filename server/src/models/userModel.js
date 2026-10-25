@@ -131,6 +131,17 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    dismissedOnboardingAt: {
+      type: Date,
+      default: null,
+    },
+    notificationPreferences: {
+      sessionUpdates: { type: Boolean, default: true },
+      goalReminders: { type: Boolean, default: true },
+      peerActivity: { type: Boolean, default: true },
+      circleActivity: { type: Boolean, default: true },
+      platformAnnouncements: { type: Boolean, default: true },
+    },
     isSuspended: {
       type: Boolean,
       default: false,

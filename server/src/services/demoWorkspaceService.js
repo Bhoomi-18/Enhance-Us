@@ -901,3 +901,306 @@ export const dismissTour = async (workspaceId) => {
   await saveWorkspace(ws);
   return { success: true, tourDismissed: true };
 };
+
+/* ==========================================================================
+ * V3.5 RETENTION & PERSONALIZATION (SANDBOXED FOR DEMO VISITORS)
+ * ========================================================================== */
+
+export const getNotificationPreferences = async (workspaceId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const prefs = ws.data.profile?.notificationPreferences || {
+    sessionUpdates: true,
+    goalReminders: true,
+    peerActivity: true,
+    circleActivity: true,
+    platformAnnouncements: true,
+  };
+  return prefs;
+};
+
+export const updateNotificationPreferences = async (workspaceId, preferences) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.profile = ws.data.profile || {};
+  ws.data.profile.notificationPreferences = {
+    ...(ws.data.profile.notificationPreferences || {}),
+    ...preferences,
+  };
+  await saveWorkspace(ws);
+  return ws.data.profile.notificationPreferences;
+};
+
+export const dismissOnboarding = async (workspaceId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.profile = ws.data.profile || {};
+  ws.data.profile.dismissedOnboardingAt = new Date().toISOString();
+  await saveWorkspace(ws);
+  return { success: true, dismissedOnboardingAt: ws.data.profile.dismissedOnboardingAt };
+};
+
+export const completeOnboarding = async (workspaceId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.profile = ws.data.profile || {};
+  if (!ws.data.profile.onboardingCompletedAt) {
+    ws.data.profile.onboardingCompletedAt = new Date().toISOString();
+  }
+  await saveWorkspace(ws);
+  return { success: true, user: ws.data.profile };
+};
+
+export const getDashboardFeed = async (workspaceId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const data = ws.data;
+
+  const profile = data.profile || {};
+  const goals = data.goals || [];
+  const roadmaps = data.roadmaps || [];
+  const sessions = data.sessions || [];
+  const reviews = data.reviews || [];
+  const circles = data.circles || [];
+  const connections = data.connections || [];
+
+  // Roadmap lookup by goal ID
+  const roadmapByGoalId = new Map();
+  roadmaps.forEach((r) => {
+    if (r.goal) roadmapByGoalId.set(r.goal.toString(), r);
+  });
+
+  // 1. Next Best Actions (Deterministic for Demo)
+  const nextBestActions = [];
+
+  // Completed session review check
+  const completedSessions = sessions.filter((s) => s.status === 'COMPLETED');
+  const sessionNeedingReview = completedSessions.find((s) => !s.hasFeedback);
+  if (sessionNeedingReview) {
+    nextBestActions.push({
+      id: `review_${sessionNeedingReview._id}`,
+      type: 'PENDING_REVIEW',
+      priority: 'HIGH',
+      title: `Leave Peer Review for ${sessionNeedingReview.skillTaught || 'Session'}`,
+      description: 'Exchange session completed with Sarah Chen. Leave a peer review to help build verified proof-of-skill.',
+      link: '/sessions',
+      actionLabel: 'Leave Review',
+      icon: 'Star',
+      reason: 'Exchange session completed recently',
+    });
+  }
+
+  // Upcoming scheduled session
+  const scheduledSessions = sessions.filter((s) => s.status === 'SCHEDULED');
+  if (scheduledSessions.length > 0) {
+    const nextSession = scheduledSessions[0];
+    nextBestActions.push({
+      id: `upcoming_session_${nextSession._id}`,
+      type: 'UPCOMING_SESSION',
+      priority: 'HIGH',
+      title: `Prepare for: ${nextSession.skillTaught || 'Session'}`,
+      description: `Scheduled for tomorrow at ${nextSession.time || '2:00 PM'}. Review agenda and preparation notes.`,
+      link: '/sessions',
+      actionLabel: 'View Session',
+      icon: 'Calendar',
+      reason: 'Upcoming session on your schedule',
+    });
+  }
+
+  // Active or paused goal
+  const activeGoals = goals.filter((g) => g.status === 'ACTIVE');
+  const pausedGoals = goals.filter((g) => g.status === 'PAUSED');
+  const relevantGoal = activeGoals[0] || pausedGoals[0];
+
+  if (relevantGoal) {
+    const relatedRoadmap = roadmapByGoalId.get(relevantGoal._id.toString());
+    let nextMsTitle = 'Milestone in progress';
+    let link = `/goals/${relevantGoal._id}`;
+
+    if (relatedRoadmap && Array.isArray(relatedRoadmap.milestones)) {
+      const nextMs = relatedRoadmap.milestones.find((m) => m.status !== 'COMPLETED');
+      if (nextMs) {
+        nextMsTitle = nextMs.title;
+        link = `/roadmaps/${relatedRoadmap._id}`;
+      }
+    }
+
+    const isPaused = relevantGoal.status === 'PAUSED';
+    nextBestActions.push({
+      id: `continue_goal_${relevantGoal._id}`,
+      type: isPaused ? 'RESUME_GOAL' : 'CONTINUE_GOAL',
+      priority: 'MEDIUM',
+      title: isPaused ? `Resume Goal: ${relevantGoal.title}` : `Continue Goal: ${relevantGoal.title}`,
+      description: `Target step: ${nextMsTitle}. Current progress: ${relevantGoal.progress || 0}%.`,
+      link,
+      actionLabel: isPaused ? 'Resume Learning' : 'Continue Learning',
+      icon: 'Target',
+      reason: isPaused ? 'Goal is currently paused' : 'Active goal in progress',
+    });
+
+    if (relevantGoal.skillGaps?.missingSkills?.length > 0) {
+      const missing = relevantGoal.skillGaps.missingSkills[0];
+      nextBestActions.push({
+        id: `match_gap_${missing.name || 'skill'}`,
+        type: 'FIND_PARTNER',
+        priority: 'MEDIUM',
+        title: `Find Partner for ${missing.name}`,
+        description: `Missing skill identified in your "${relevantGoal.title}" blueprint. Connect with a peer partner.`,
+        link: '/matches',
+        actionLabel: 'Discover Matches',
+        icon: 'Zap',
+        reason: `Required for "${relevantGoal.title}"`,
+      });
+    }
+  }
+
+  // 2. Unfinished Learning Continuity
+  let unfinishedLearning = null;
+  if (relevantGoal) {
+    const relatedRoadmap = roadmapByGoalId.get(relevantGoal._id.toString());
+    let currentMilestone = null;
+    let completedMilestones = 0;
+    let totalMilestones = 0;
+
+    if (relatedRoadmap && Array.isArray(relatedRoadmap.milestones)) {
+      totalMilestones = relatedRoadmap.milestones.length;
+      completedMilestones = relatedRoadmap.milestones.filter((m) => m.status === 'COMPLETED').length;
+      currentMilestone = relatedRoadmap.milestones.find((m) => m.status !== 'COMPLETED') || null;
+    }
+
+    unfinishedLearning = {
+      goalId: relevantGoal._id,
+      title: relevantGoal.title,
+      description: relevantGoal.description,
+      status: relevantGoal.status,
+      progress: relevantGoal.progress || 0,
+      totalMilestones,
+      completedMilestones,
+      currentMilestoneTitle: currentMilestone?.title || 'Next milestone',
+      currentMilestoneSkill: currentMilestone?.skillName || '',
+      roadmapId: relatedRoadmap?._id || null,
+      continueLink: relatedRoadmap ? `/roadmaps/${relatedRoadmap._id}` : `/goals/${relevantGoal._id}`,
+    };
+  }
+
+  // 3. Chronological Activity Timeline (from genuine workspace baseline)
+  const rawEvents = [];
+
+  goals.forEach((g) => {
+    rawEvents.push({
+      id: `timeline_goal_${g._id}`,
+      type: 'GOAL_CREATED',
+      title: `Created goal blueprint "${g.title}"`,
+      subtitle: `${g.requiredSkills?.length || 0} skills analyzed`,
+      timestamp: g.createdAt || new Date().toISOString(),
+      link: `/goals/${g._id}`,
+      icon: 'Target',
+    });
+  });
+
+  roadmaps.forEach((r) => {
+    (r.milestones || []).forEach((m) => {
+      if (m.status === 'COMPLETED' || m.completedAt) {
+        rawEvents.push({
+          id: `timeline_ms_${m.milestoneId || m.title}`,
+          type: 'MILESTONE_COMPLETED',
+          title: `Completed milestone: "${m.title}"`,
+          subtitle: `Skill: ${m.skillName || 'General'}`,
+          timestamp: m.completedAt || r.updatedAt || new Date().toISOString(),
+          link: `/roadmaps/${r._id}`,
+          icon: 'Award',
+        });
+      }
+    });
+  });
+
+  sessions.forEach((s) => {
+    if (s.status === 'COMPLETED') {
+      rawEvents.push({
+        id: `timeline_sess_${s._id}`,
+        type: 'SESSION_COMPLETED',
+        title: `Completed learning session on "${s.skillTaught}"`,
+        subtitle: `${s.durationMinutes || 60} min peer exchange`,
+        timestamp: s.date || new Date().toISOString(),
+        link: '/sessions',
+        icon: 'Clock',
+      });
+    } else if (s.status === 'SCHEDULED') {
+      rawEvents.push({
+        id: `timeline_sess_sched_${s._id}`,
+        type: 'SESSION_SCHEDULED',
+        title: `Scheduled exchange session on "${s.skillTaught}"`,
+        subtitle: `${new Date(s.date).toLocaleDateString()} at ${s.time || ''}`,
+        timestamp: s.createdAt || s.date || new Date().toISOString(),
+        link: '/sessions',
+        icon: 'Calendar',
+      });
+    }
+  });
+
+  reviews.forEach((rev) => {
+    rawEvents.push({
+      id: `timeline_rev_${rev._id}`,
+      type: 'REVIEW_RECEIVED',
+      title: `Received ${rev.rating}★ peer review`,
+      subtitle: rev.comment ? `"${rev.comment.substring(0, 70)}..."` : 'Verified exchange feedback',
+      timestamp: rev.createdAt || new Date().toISOString(),
+      link: '/profile',
+      icon: 'Star',
+    });
+  });
+
+  circles.forEach((c) => {
+    rawEvents.push({
+      id: `timeline_circle_${c._id}`,
+      type: 'CIRCLE_JOINED',
+      title: `Joined learning circle "${c.name}"`,
+      subtitle: `${c.memberCount || 1} members`,
+      timestamp: c.createdAt || new Date().toISOString(),
+      link: `/circles/${c._id}`,
+      icon: 'Users',
+    });
+  });
+
+  rawEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const activityTimeline = rawEvents.slice(0, 10);
+
+  // 4. Onboarding Status
+  const onboarding = {
+    isCompleted: Boolean(profile.onboardingCompletedAt),
+    completedAt: profile.onboardingCompletedAt,
+    dismissedAt: profile.dismissedOnboardingAt || null,
+    steps: [
+      { id: 'offer_skill', label: 'Offer a skill you can teach', completed: true, link: '/profile', actionText: 'Edit Profile' },
+      { id: 'create_goal', label: 'Define your first learning goal', completed: goals.length > 0, link: '/goals', actionText: 'Create Goal' },
+      { id: 'connect_peer', label: 'Find a peer partner or join a circle', completed: sessions.length > 0 || circles.length > 0, link: '/matches', actionText: 'Discover Peers' },
+    ],
+  };
+
+  // 5. Respectful Return Summary
+  const returnSummary = {
+    greeting: `Welcome back, Alex!`,
+    message: relevantGoal ? `You are making steady progress on "${relevantGoal.title}".` : 'Ready to resume your learning goals?',
+    hasActiveGoal: Boolean(relevantGoal),
+    activeGoalTitle: relevantGoal ? relevantGoal.title : null,
+    activeGoalProgress: relevantGoal ? relevantGoal.progress : 0,
+    continueLink: unfinishedLearning ? unfinishedLearning.continueLink : '/goals',
+  };
+
+  // 6. Metrics Overview
+  const totalGoals = goals.length;
+  const activeGoalsCount = activeGoals.length;
+  const avgProgress = totalGoals > 0 ? Math.round(goals.reduce((acc, g) => acc + (g.progress || 0), 0) / totalGoals) : 0;
+  const totalGaps = goals.reduce((acc, g) => acc + (g.skillGaps?.missingSkills?.length || 0), 0);
+
+  return {
+    nextBestActions: nextBestActions.slice(0, 4),
+    unfinishedLearning,
+    activityTimeline,
+    onboarding,
+    returnSummary,
+    metrics: {
+      totalGoals,
+      activeGoals: activeGoalsCount,
+      avgProgress,
+      totalGaps,
+      sessionsCompleted: profile.sessionsCompleted || 4,
+    },
+  };
+};
+
