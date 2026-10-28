@@ -22,6 +22,8 @@ import coachRoutes from './coachRoutes.js';
 import trustRoutes from './trustRoutes.js';
 import insightsRoutes from './insightsRoutes.js';
 import demoRoutes from './demoRoutes.js';
+import reportRoutes from './reportRoutes.js';
+import skillEvidenceRoutes from './skillEvidenceRoutes.js';
 
 const router = Router();
 
@@ -35,6 +37,7 @@ router.use('/portfolio', portfolioRoutes);
 router.use('/coach', coachRoutes);
 router.use('/trust', trustRoutes);
 router.use('/insights', insightsRoutes);
+router.use('/skills/evidence', skillEvidenceRoutes);
 router.use('/skills', skillRoutes);
 router.use('/goals', goalRoutes);
 router.use('/roadmaps', roadmapRoutes);
@@ -46,6 +49,7 @@ router.use('/conversations', conversationRoutes);
 router.use('/sessions', sessionRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/reports', reportRoutes);
 router.use('/search', searchRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/demo', demoRoutes);

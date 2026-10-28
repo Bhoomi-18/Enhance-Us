@@ -19,7 +19,7 @@
  * Always clone via getCanonicalBaseline() before mutating in a workspace.
  */
 
-export const BASELINE_VERSION = '3.5.1';
+export const BASELINE_VERSION = '3.6.0';
 
 export const DEMO_USER_ID = 'demo_user_canonical_001';
 export const DEMO_PEER_ID = 'demo_peer_sarah_002';
@@ -61,10 +61,78 @@ export const CANONICAL_DEMO_BASELINE = {
       reviewCount: 4,
     },
     skills: [
-      { name: 'React', level: 'ADVANCED', category: 'Frontend', type: 'TEACH' },
-      { name: 'TypeScript', level: 'ADVANCED', category: 'Frontend', type: 'TEACH' },
-      { name: 'Node.js', level: 'INTERMEDIATE', category: 'Backend', type: 'TEACH' },
-      { name: 'TailwindCSS', level: 'ADVANCED', category: 'Frontend', type: 'TEACH' },
+      {
+        name: 'React',
+        level: 'ADVANCED',
+        category: 'Frontend',
+        type: 'TEACH',
+        evidence: {
+          portfolioUrl: 'https://github.com/alexmorgan/react-flow-builder',
+          certificateUrl: 'https://credentials.meta.org/verify/react-pro-9821',
+          workSampleUrl: 'https://alexmorgan.dev/showcase/react',
+          description: '5+ years building scalable React 18 production applications with custom state hooks and performance profiling.',
+          verificationStatus: 'VERIFIED',
+          submittedAt: '2026-09-20T10:00:00.000Z',
+          reviewedAt: '2026-09-22T14:30:00.000Z',
+          reviewedBy: 'admin_reviewer_001',
+          reviewerNotes: 'Verified open-source repository code quality, architecture patterns, and authenticated credential hash.',
+          rejectionReason: '',
+        },
+      },
+      {
+        name: 'TypeScript',
+        level: 'ADVANCED',
+        category: 'Frontend',
+        type: 'TEACH',
+        evidence: {
+          portfolioUrl: 'https://github.com/alexmorgan/typed-toolkit',
+          workSampleUrl: 'https://alexmorgan.dev/showcase/typescript',
+          certificateUrl: '',
+          description: 'Author of open-source TypeScript utility toolkit with 500+ GitHub stars; extensive experience with complex generics.',
+          verificationStatus: 'SUBMITTED',
+          submittedAt: '2026-10-15T09:00:00.000Z',
+          reviewedAt: null,
+          reviewedBy: null,
+          reviewerNotes: '',
+          rejectionReason: '',
+        },
+      },
+      {
+        name: 'Node.js',
+        level: 'INTERMEDIATE',
+        category: 'Backend',
+        type: 'TEACH',
+        evidence: {
+          portfolioUrl: 'https://github.com/alexmorgan/express-microservices',
+          certificateUrl: '',
+          workSampleUrl: '',
+          description: 'Built REST APIs, JWT authentication middlewares, and MongoDB services for web applications.',
+          verificationStatus: 'NOT_SUBMITTED',
+          submittedAt: null,
+          reviewedAt: null,
+          reviewedBy: null,
+          reviewerNotes: '',
+          rejectionReason: '',
+        },
+      },
+      {
+        name: 'TailwindCSS',
+        level: 'ADVANCED',
+        category: 'Frontend',
+        type: 'TEACH',
+        evidence: {
+          portfolioUrl: '',
+          certificateUrl: '',
+          workSampleUrl: '',
+          description: '',
+          verificationStatus: 'NOT_SUBMITTED',
+          submittedAt: null,
+          reviewedAt: null,
+          reviewedBy: null,
+          reviewerNotes: '',
+          rejectionReason: '',
+        },
+      },
     ],
     learningInterests: [
       { name: 'UI/UX Design', category: 'Design', priority: 'HIGH' },
@@ -803,6 +871,33 @@ export const CANONICAL_DEMO_BASELINE = {
       status: 'PENDING',
       isDirectRequest: true,
       createdAt: '2026-10-24T14:00:00.000Z',
+    },
+  ],
+
+  // 18. Moderation & Abuse Reports (Demo Showcase)
+  reports: [
+    {
+      _id: 'demo_report_sample_001',
+      reporter: {
+        _id: DEMO_USER_ID,
+        name: 'Alex Morgan',
+        email: 'demo@enhanceus.org',
+      },
+      reportedUser: {
+        _id: DEMO_PEER_MARCUS_ID,
+        name: 'Marcus Brody',
+        email: 'marcus.demo@enhanceus.org',
+        isSuspended: false,
+      },
+      targetType: 'SKILL_EVIDENCE',
+      targetId: `${DEMO_PEER_MARCUS_ID}:Docker Containers`,
+      category: 'SUSPICIOUS_EVIDENCE',
+      reason: 'The credential link provided appears to lead to an unrelated external repository without verification of ownership.',
+      status: 'PENDING',
+      moderationNotes: '',
+      actionTaken: 'NONE',
+      metadata: { skillName: 'Docker Containers' },
+      createdAt: '2026-10-20T11:00:00.000Z',
     },
   ],
 };

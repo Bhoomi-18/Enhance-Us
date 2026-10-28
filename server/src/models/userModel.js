@@ -1,6 +1,88 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+const skillEvidenceSchema = new mongoose.Schema(
+  {
+    portfolioUrl: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [500, 'Portfolio URL cannot exceed 500 characters'],
+      validate: {
+        validator: function (v) {
+          if (!v) return true;
+          return /^https?:\/\/.+/i.test(v);
+        },
+        message: 'Portfolio URL must use http or https protocol',
+      },
+    },
+    certificateUrl: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [500, 'Certificate URL cannot exceed 500 characters'],
+      validate: {
+        validator: function (v) {
+          if (!v) return true;
+          return /^https?:\/\/.+/i.test(v);
+        },
+        message: 'Certificate URL must use http or https protocol',
+      },
+    },
+    workSampleUrl: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [500, 'Work sample URL cannot exceed 500 characters'],
+      validate: {
+        validator: function (v) {
+          if (!v) return true;
+          return /^https?:\/\/.+/i.test(v);
+        },
+        message: 'Work sample URL must use http or https protocol',
+      },
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [1000, 'Description cannot exceed 1000 characters'],
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['NOT_SUBMITTED', 'SUBMITTED', 'UNDER_REVIEW', 'VERIFIED', 'REJECTED'],
+      default: 'NOT_SUBMITTED',
+      index: true,
+    },
+    submittedAt: {
+      type: Date,
+      default: null,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    reviewerNotes: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [1000, 'Reviewer notes cannot exceed 1000 characters'],
+    },
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [1000, 'Rejection reason cannot exceed 1000 characters'],
+    },
+  },
+  { _id: false }
+);
+
 const userSkillSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -15,8 +97,12 @@ const userSkillSchema = new mongoose.Schema(
       enum: ['TEACH', 'LEARN', 'both'],
       default: 'TEACH',
     },
+    evidence: {
+      type: skillEvidenceSchema,
+      default: () => ({ verificationStatus: 'NOT_SUBMITTED' }),
+    },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const userSchema = new mongoose.Schema(

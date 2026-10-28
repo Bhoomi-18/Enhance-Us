@@ -95,3 +95,42 @@ export const getUserReviews = async (req, res, next) => {
     next(error);
   }
 };
+
+export const updateReview = async (req, res, next) => {
+  try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const review = await demoWorkspaceService.updateReview(
+        req.user.workspaceId,
+        req.params.id,
+        req.body,
+        req.user._id
+      );
+      return ApiResponse.success(res, 'Review updated successfully', { review }, HTTP_STATUS.OK);
+    }
+
+    const review = await reviewService.updateReview(req.params.id, req.user._id, req.body);
+    return ApiResponse.success(res, 'Review updated successfully', { review }, HTTP_STATUS.OK);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteReview = async (req, res, next) => {
+  try {
+    if (req.user?.isDemo && req.user?.workspaceId) {
+      const result = await demoWorkspaceService.deleteReview(
+        req.user.workspaceId,
+        req.params.id,
+        req.user._id
+      );
+      return ApiResponse.success(res, result.message, null, HTTP_STATUS.OK);
+    }
+
+    const isAdmin = Boolean(req.user?.role === 'admin' || req.isAdmin);
+    const result = await reviewService.deleteReview(req.params.id, req.user._id, isAdmin);
+    return ApiResponse.success(res, result.message, null, HTTP_STATUS.OK);
+  } catch (error) {
+    next(error);
+  }
+};
+

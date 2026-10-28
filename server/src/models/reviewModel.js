@@ -51,6 +51,8 @@ const reviewSchema = new mongoose.Schema(
     feedbackText: {
       type: String,
       default: '',
+      trim: true,
+      maxlength: [1000, 'Feedback cannot exceed 1000 characters'],
     },
   },
   {

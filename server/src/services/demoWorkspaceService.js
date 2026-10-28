@@ -3,6 +3,7 @@ import DemoWorkspace from '../models/demoWorkspaceModel.js';
 import { getCanonicalBaseline, BASELINE_VERSION, DEMO_USER_ID } from '../fixtures/canonicalDemoBaseline.js';
 import { ApiError } from '../utils/apiError.js';
 import calculateSkillGaps from './skillGapEngine.js';
+import { normalizeSkillName } from '../utils/skillNormalizer.js';
 
 // In-Memory store for offline testing or when MongoDB is disconnected
 export const mockWorkspacesMap = new Map();
@@ -1432,4 +1433,287 @@ export const getDashboardFeed = async (workspaceId) => {
     },
   };
 };
+
+/**
+ * V3.6 Demo Workspace Support: Skill Evidence Management
+ */
+export const addOrUpdateSkillEvidence = async (workspaceId, skillName, evidenceData) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const skills = ws.data.profile?.skills || [];
+  const normTarget = normalizeSkillName(skillName);
+  const skill = skills.find((s) => normalizeSkillName(s.name) === normTarget);
+  if (!skill) {
+    throw new ApiError(404, `Skill "${skillName}" not found on profile`);
+  }
+
+  const { portfolioUrl, certificateUrl, workSampleUrl, description } = evidenceData || {};
+  const cleanPortfolioUrl = (portfolioUrl || '').trim();
+  const cleanCertificateUrl = (certificateUrl || '').trim();
+  const cleanWorkSampleUrl = (workSampleUrl || '').trim();
+  const cleanDescription = (description || '').trim();
+
+  if (cleanPortfolioUrl && !/^https?:\/\/.+/i.test(cleanPortfolioUrl)) {
+    throw new ApiError(400, 'Portfolio URL must use http or https protocol');
+  }
+  if (cleanCertificateUrl && !/^https?:\/\/.+/i.test(cleanCertificateUrl)) {
+    throw new ApiError(400, 'Certificate URL must use http or https protocol');
+  }
+  if (cleanWorkSampleUrl && !/^https?:\/\/.+/i.test(cleanWorkSampleUrl)) {
+    throw new ApiError(400, 'Work sample URL must use http or https protocol');
+  }
+
+  skill.evidence = {
+    portfolioUrl: cleanPortfolioUrl,
+    certificateUrl: cleanCertificateUrl,
+    workSampleUrl: cleanWorkSampleUrl,
+    description: cleanDescription,
+    verificationStatus: 'SUBMITTED',
+    submittedAt: new Date().toISOString(),
+    reviewedAt: null,
+    reviewedBy: null,
+    reviewerNotes: '',
+    rejectionReason: '',
+  };
+
+  await saveWorkspace(ws);
+  return {
+    skillName: skill.name,
+    evidence: skill.evidence,
+  };
+};
+
+export const deleteSkillEvidence = async (workspaceId, skillName) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const skills = ws.data.profile?.skills || [];
+  const normTarget = normalizeSkillName(skillName);
+  const skill = skills.find((s) => normalizeSkillName(s.name) === normTarget);
+  if (!skill) {
+    throw new ApiError(404, `Skill "${skillName}" not found on profile`);
+  }
+
+  skill.evidence = {
+    portfolioUrl: '',
+    certificateUrl: '',
+    workSampleUrl: '',
+    description: '',
+    verificationStatus: 'NOT_SUBMITTED',
+    submittedAt: null,
+    reviewedAt: null,
+    reviewedBy: null,
+    reviewerNotes: '',
+    rejectionReason: '',
+  };
+
+  await saveWorkspace(ws);
+  return {
+    skillName: skill.name,
+    evidence: skill.evidence,
+  };
+};
+
+export const getPendingEvidenceSkills = async (workspaceId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const queue = [];
+
+  const profileSkills = ws.data.profile?.skills || [];
+  profileSkills.forEach((sk) => {
+    if (sk.evidence && sk.evidence.verificationStatus !== 'NOT_SUBMITTED') {
+      queue.push({
+        userId: ws.userId,
+        userName: ws.data.profile?.name || 'Alex Morgan',
+        userEmail: ws.data.profile?.email || 'demo@enhanceus.org',
+        skillName: sk.name,
+        skillCategory: sk.category || 'General',
+        skillLevel: sk.level || 'INTERMEDIATE',
+        evidence: sk.evidence,
+        submittedAt: sk.evidence.submittedAt,
+        verificationStatus: sk.evidence.verificationStatus,
+      });
+    }
+  });
+
+  const peers = ws.data.peers || [];
+  peers.forEach((peer) => {
+    (peer.skills || []).forEach((sk) => {
+      if (sk.evidence && sk.evidence.verificationStatus !== 'NOT_SUBMITTED') {
+        queue.push({
+          userId: peer._id,
+          userName: peer.name,
+          userEmail: peer.email,
+          skillName: sk.name,
+          skillCategory: sk.category || 'General',
+          skillLevel: sk.level || 'INTERMEDIATE',
+          evidence: sk.evidence,
+          submittedAt: sk.evidence.submittedAt,
+          verificationStatus: sk.evidence.verificationStatus,
+        });
+      }
+    });
+  });
+
+  return queue;
+};
+
+export const moderateSkillEvidence = async (workspaceId, targetUserId, skillName, decisionData, adminUser) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const { action, reviewerNotes, rejectionReason } = decisionData || {};
+  const normTarget = normalizeSkillName(skillName);
+
+  let targetSkill = null;
+  if (targetUserId === ws.userId || targetUserId === 'demo_user_canonical_001') {
+    targetSkill = (ws.data.profile?.skills || []).find((s) => normalizeSkillName(s.name) === normTarget);
+  } else {
+    const peer = (ws.data.peers || []).find((p) => p._id === targetUserId);
+    if (peer) {
+      targetSkill = (peer.skills || []).find((s) => normalizeSkillName(s.name) === normTarget);
+    }
+  }
+
+  if (!targetSkill) {
+    throw new ApiError(404, `Skill "${skillName}" not found for target user`);
+  }
+
+  if (!targetSkill.evidence) {
+    targetSkill.evidence = { verificationStatus: 'NOT_SUBMITTED' };
+  }
+
+  if (action === 'VERIFY') {
+    targetSkill.evidence.verificationStatus = 'VERIFIED';
+    targetSkill.evidence.reviewedAt = new Date().toISOString();
+    targetSkill.evidence.reviewedBy = adminUser?._id || 'demo_admin';
+    targetSkill.evidence.reviewerNotes = reviewerNotes || 'Verified evidence';
+    targetSkill.evidence.rejectionReason = '';
+  } else if (action === 'REJECT') {
+    targetSkill.evidence.verificationStatus = 'REJECTED';
+    targetSkill.evidence.reviewedAt = new Date().toISOString();
+    targetSkill.evidence.reviewedBy = adminUser?._id || 'demo_admin';
+    targetSkill.evidence.reviewerNotes = reviewerNotes || '';
+    targetSkill.evidence.rejectionReason = rejectionReason || reviewerNotes || 'Evidence did not meet criteria';
+  } else if (action === 'UNDER_REVIEW') {
+    targetSkill.evidence.verificationStatus = 'UNDER_REVIEW';
+    targetSkill.evidence.reviewerNotes = reviewerNotes || '';
+  }
+
+  await saveWorkspace(ws);
+  return {
+    skillName: targetSkill.name,
+    evidence: targetSkill.evidence,
+  };
+};
+
+export const createReport = async (workspaceId, reportData, reporter) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const { targetType, targetId, category, reason, reportedUserId, metadata } = reportData || {};
+
+  if (!reason || reason.trim().length < 5) {
+    throw new ApiError(400, 'Explanation must be at least 5 characters long');
+  }
+
+  const newReport = {
+    _id: 'demo_report_' + Date.now(),
+    reporter: {
+      _id: reporter?._id || ws.userId,
+      name: ws.data.profile?.name || 'Alex Morgan',
+      email: ws.data.profile?.email || 'demo@enhanceus.org',
+    },
+    reportedUser: {
+      _id: reportedUserId || targetId,
+      name: 'Reported Peer',
+      email: 'peer@enhanceus.org',
+      isSuspended: false,
+    },
+    targetType: targetType || 'USER',
+    targetId: targetId || 'demo_target',
+    category: category || 'MISLEADING_SKILL_CLAIMS',
+    reason: reason.trim(),
+    status: 'PENDING',
+    moderationNotes: '',
+    actionTaken: 'NONE',
+    metadata: metadata || {},
+    createdAt: new Date().toISOString(),
+  };
+
+  ws.data.reports = ws.data.reports || [];
+  ws.data.reports.unshift(newReport);
+  await saveWorkspace(ws);
+
+  return {
+    message: 'Report submitted successfully. Our moderation team will review this content.',
+    report: newReport,
+  };
+};
+
+export const getReports = async (workspaceId, filters = {}) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  let reports = ws.data.reports || [];
+  if (filters.status) {
+    reports = reports.filter((r) => r.status === filters.status);
+  }
+  if (filters.category) {
+    reports = reports.filter((r) => r.category === filters.category);
+  }
+  return reports;
+};
+
+export const getReportById = async (workspaceId, reportId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const reports = ws.data.reports || [];
+  const rep = reports.find((r) => r._id === reportId);
+  if (!rep) throw new ApiError(404, 'Report not found');
+  return rep;
+};
+
+export const moderateReport = async (workspaceId, reportId, moderationData, adminUser) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const reports = ws.data.reports || [];
+  const rep = reports.find((r) => r._id === reportId);
+  if (!rep) throw new ApiError(404, 'Report not found');
+
+  const { status, moderationNotes, actionTaken } = moderationData || {};
+  if (status) rep.status = status;
+  if (actionTaken) rep.actionTaken = actionTaken;
+  if (moderationNotes !== undefined) rep.moderationNotes = moderationNotes.trim();
+  rep.moderatedAt = new Date().toISOString();
+  rep.moderatedBy = {
+    _id: adminUser?._id || 'demo_admin',
+    name: adminUser?.name || 'Administrator',
+  };
+
+  await saveWorkspace(ws);
+  return rep;
+};
+
+export const updateReview = async (workspaceId, reviewId, updateData, userId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const reviews = ws.data.reviews || [];
+  const rev = reviews.find((r) => r._id === reviewId);
+  if (!rev) throw new ApiError(404, 'Review not found');
+
+  const { teachingRating, communicationRating, reliabilityRating, feedbackText, rating } = updateData || {};
+  let t = Number(teachingRating || rating || rev.teachingRating || 5);
+  let c = Number(communicationRating || rating || rev.communicationRating || 5);
+  let r = Number(reliabilityRating || rating || rev.reliabilityRating || 5);
+
+  rev.teachingRating = t;
+  rev.communicationRating = c;
+  rev.reliabilityRating = r;
+  rev.overallRating = Math.round(((t + c + r) / 3) * 10) / 10;
+  if (feedbackText !== undefined) rev.feedbackText = feedbackText.trim();
+  rev.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return rev;
+};
+
+export const deleteReview = async (workspaceId, reviewId, userId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const reviews = ws.data.reviews || [];
+  const idx = reviews.findIndex((r) => r._id === reviewId);
+  if (idx === -1) throw new ApiError(404, 'Review not found');
+
+  reviews.splice(idx, 1);
+  await saveWorkspace(ws);
+  return { success: true, message: 'Review deleted successfully' };
+};
+
 

@@ -29,9 +29,10 @@ export const getTrustAndContributionProfile = async (targetUserId) => {
       email: 'contributor@enhanceus.test',
       createdAt: new Date('2026-01-01'),
       isDemo: false,
+      skills: [],
     };
   } else {
-    user = await User.findById(userIdStr).select('name email isDemo createdAt role').lean();
+    user = await User.findById(userIdStr).select('name email isDemo createdAt role skills').lean();
     if (!user) {
       throw new ApiError(404, 'User not found');
     }
@@ -249,6 +250,12 @@ export const getTrustAndContributionProfile = async (targetUserId) => {
         exchangeConfirmed: exchangeConfirmedCount,
         portfolioEvidence: portfolioEvidenceCount,
         selfReported: selfReportedCount,
+        verifiedSkillsCount: (user.skills || []).filter(
+          (s) => s.evidence && s.evidence.verificationStatus === 'VERIFIED'
+        ).length,
+        submittedSkillsCount: (user.skills || []).filter(
+          (s) => s.evidence && ['SUBMITTED', 'UNDER_REVIEW'].includes(s.evidence.verificationStatus)
+        ).length,
       },
       circleContributions: {
         circlesJoined: userCircles.length,

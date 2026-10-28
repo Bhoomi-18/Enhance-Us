@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import * as adminController from '../controllers/adminController.js';
+import * as skillEvidenceController from '../controllers/skillEvidenceController.js';
+import * as reportController from '../controllers/reportController.js';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { requireAdmin } from '../middleware/adminMiddleware.js';
 import { adminRateLimiter } from '../middleware/adminRateLimiter.js';
@@ -37,5 +39,15 @@ router.get('/health', adminController.getHealth);
 
 // 7. Audit Trail
 router.get('/audit-logs', adminController.getAuditLogs);
+
+// 8. Skill Evidence Verification Queue
+router.get('/evidence', skillEvidenceController.getEvidenceQueue);
+router.patch('/evidence/:userId/:skillName', skillEvidenceController.moderateEvidence);
+
+// 9. Abuse & Content Moderation Reports
+router.get('/reports', reportController.getReports);
+router.get('/reports/:id', reportController.getReportById);
+router.patch('/reports/:id/moderate', reportController.moderateReport);
+router.patch('/reports/:id', reportController.moderateReport);
 
 export default router;

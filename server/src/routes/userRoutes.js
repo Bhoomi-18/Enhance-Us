@@ -9,7 +9,8 @@ import {
   updateNotificationPreferences,
   deleteAccount,
 } from '../controllers/userController.js';
-import { authenticateUser } from '../middleware/authMiddleware.js';
+import { addOrUpdateEvidence, deleteEvidence } from '../controllers/skillEvidenceController.js';
+import { authenticateUser, requireEmailVerified } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -22,6 +23,12 @@ router.post('/onboarding/complete', completeOnboarding);
 router.post('/onboarding/dismiss', dismissOnboarding);
 router.delete('/me', deleteAccount);
 router.patch('/profile', updateProfile);
+
+// Skill Evidence endpoints on user profile
+router.put('/skills/:skillName/evidence', requireEmailVerified, addOrUpdateEvidence);
+router.post('/skills/:skillName/evidence', requireEmailVerified, addOrUpdateEvidence);
+router.delete('/skills/:skillName/evidence', requireEmailVerified, deleteEvidence);
+
 router.get('/:id', getPublicProfile);
 
 export default router;

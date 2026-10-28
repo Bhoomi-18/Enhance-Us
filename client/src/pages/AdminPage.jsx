@@ -7,6 +7,8 @@ import {
   Activity,
   Shield,
   ShieldCheck,
+  ShieldAlert,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AdminOverviewTab from '../components/admin/AdminOverviewTab';
@@ -15,6 +17,8 @@ import AdminAnalyticsTab from '../components/admin/AdminAnalyticsTab';
 import AdminFeedbackTab from '../components/admin/AdminFeedbackTab';
 import AdminHealthTab from '../components/admin/AdminHealthTab';
 import AdminAuditLogsTab from '../components/admin/AdminAuditLogsTab';
+import AdminVerificationTab from '../components/admin/AdminVerificationTab';
+import AdminReportsTab from '../components/admin/AdminReportsTab';
 
 export const AdminPage = () => {
   const { user } = useAuth();
@@ -22,6 +26,8 @@ export const AdminPage = () => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'verification', label: 'Skill Verifications', icon: Award },
+    { id: 'reports', label: 'Moderation Reports', icon: ShieldAlert },
     { id: 'users', label: 'User Directory', icon: Users },
     { id: 'analytics', label: 'Analytics & Funnels', icon: TrendingUp },
     { id: 'feedback', label: 'Feedback Inbox', icon: MessageSquare },
@@ -73,6 +79,8 @@ export const AdminPage = () => {
         {/* Tab Content Display */}
         <div className="animate-in fade-in duration-200">
           {activeTab === 'overview' && <AdminOverviewTab />}
+          {activeTab === 'verification' && <AdminVerificationTab />}
+          {activeTab === 'reports' && <AdminReportsTab />}
           {activeTab === 'users' && <AdminUsersTab />}
           {activeTab === 'analytics' && <AdminAnalyticsTab />}
           {activeTab === 'feedback' && <AdminFeedbackTab />}

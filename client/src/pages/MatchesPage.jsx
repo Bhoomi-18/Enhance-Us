@@ -295,14 +295,51 @@ export const MatchesPage = () => {
                     <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider block mb-1">
                       THEY CAN TEACH YOU
                     </span>
-                    <p className="font-extrabold text-slate-900 dark:text-slate-100 text-xs">
-                      {matchedSkills.length > 0
-                        ? matchedSkills.map((m) => m.candidateTeachSkill).join(', ')
-                        : (candidate.skills || [])
-                            .filter((s) => !s.type || s.type === 'TEACH' || s.type === 'both')
-                            .map((s) => s.name)
-                            .join(', ') || 'No teaching skills listed'}
-                    </p>
+                    <div className="flex flex-wrap gap-1.5 items-center my-1">
+                      {matchedSkills.length > 0 ? (
+                        matchedSkills.map((m, idx) => {
+                          const matchedCandidateSkill = (candidate.skills || []).find(
+                            (s) => s.name?.toLowerCase() === m.candidateTeachSkill?.toLowerCase()
+                          );
+                          const isVerified = matchedCandidateSkill?.evidence?.verificationStatus === 'VERIFIED';
+                          return (
+                            <span key={idx} className="inline-flex items-center gap-1 font-extrabold text-slate-900 dark:text-slate-100 text-xs">
+                              <span>{m.candidateTeachSkill}</span>
+                              {isVerified && (
+                                <span
+                                  title="Platform-Verified Skill"
+                                  className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 text-[10px] rounded font-bold"
+                                >
+                                  <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                                  <span>Verified</span>
+                                </span>
+                              )}
+                              {idx < matchedSkills.length - 1 && <span className="text-slate-400 font-normal">,</span>}
+                            </span>
+                          );
+                        })
+                      ) : (candidate.skills || []).length > 0 ? (
+                        (candidate.skills || [])
+                          .filter((s) => !s.type || s.type === 'TEACH' || s.type === 'both')
+                          .map((s, idx, arr) => (
+                            <span key={idx} className="inline-flex items-center gap-1 font-extrabold text-slate-900 dark:text-slate-100 text-xs">
+                              <span>{s.name}</span>
+                              {s.evidence?.verificationStatus === 'VERIFIED' && (
+                                <span
+                                  title="Platform-Verified Skill"
+                                  className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 text-[10px] rounded font-bold"
+                                >
+                                  <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                                  <span>Verified</span>
+                                </span>
+                              )}
+                              {idx < arr.length - 1 && <span className="text-slate-400 font-normal">,</span>}
+                            </span>
+                          ))
+                      ) : (
+                        <span className="font-extrabold text-slate-900 dark:text-slate-100 text-xs">No teaching skills listed</span>
+                      )}
+                    </div>
                     <span className="text-[10px] text-teal-600 dark:text-teal-400 mt-1 block">
                       Fills your requested capability gap
                     </span>

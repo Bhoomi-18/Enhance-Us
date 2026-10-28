@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { User, Award, BookOpen, Mail, Clock, Calendar, Star, ShieldCheck, CheckCircle2, Edit3, AlertCircle } from 'lucide-react';
+import {
+  User,
+  Award,
+  BookOpen,
+  Mail,
+  Clock,
+  Calendar,
+  Star,
+  ShieldCheck,
+  CheckCircle2,
+  Edit3,
+  AlertCircle,
+  ShieldAlert,
+  Trash2,
+  ExternalLink,
+  Flag,
+} from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -10,9 +26,12 @@ import Modal from '../components/ui/Modal';
 import SkillSelector from '../components/ui/SkillSelector';
 import PortfolioSection from '../components/portfolio/PortfolioSection';
 import TrustProfileSection from '../components/trust/TrustProfileSection';
+import SkillEvidenceModal from '../components/skills/SkillEvidenceModal';
+import SkillEvidenceViewModal from '../components/skills/SkillEvidenceViewModal';
+import ReportModal from '../components/reports/ReportModal';
 import { useAuth } from '../context/AuthContext';
 import { getPublicProfile, updateProfile } from '../services/userService';
-import { getUserReviews } from '../services/reviewService';
+import { getUserReviews, updateReview, deleteReview } from '../services/reviewService';
 import { sendExchangeRequest, getPendingRequestStatus } from '../services/exchangeService';
 
 export const ProfilePage = () => {
@@ -37,6 +56,28 @@ export const ProfilePage = () => {
     learningInterests: [],
   });
   const [updating, setUpdating] = useState(false);
+
+  // V3.6 Skill Evidence States
+  const [selectedSkillForEvidence, setSelectedSkillForEvidence] = useState(null);
+  const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
+  const [selectedSkillForView, setSelectedSkillForView] = useState(null);
+  const [isEvidenceViewModalOpen, setIsEvidenceViewModalOpen] = useState(false);
+
+  // V3.6 Reporting State
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportModalTarget, setReportModalTarget] = useState({
+    targetType: 'USER',
+    targetId: '',
+    reportedUserId: '',
+    targetTitle: '',
+  });
+
+  // V3.6 Review Edit State
+  const [editingReview, setEditingReview] = useState(null);
+  const [isEditReviewModalOpen, setIsEditReviewModalOpen] = useState(false);
+  const [editReviewForm, setEditReviewForm] = useState({ rating: 5, feedbackText: '' });
+  const [savingReview, setSavingReview] = useState(false);
+  const [editReviewError, setEditReviewError] = useState(null);
 
   // Direct Session Request State (V3.5.1)
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -189,6 +230,93 @@ export const ProfilePage = () => {
     }
   };
 
+  const handleEvidenceUpdated = async () => {
+    try {
+      const targetId = isSelf ? authUser?._id : id;
+      if (targetId) {
+        const profRes = await getPublicProfile(targetId);
+        if (profRes?.data?.user) setProfileUser(profRes.data.user);
+      }
+      await refreshUser();
+    } catch (e) {
+      console.warn('[Evidence Refresh Error]', e.message);
+    }
+  };
+
+  const handleOpenReportUser = () => {
+    if (!profileUser) return;
+    setReportModalTarget({
+      targetType: 'USER',
+      targetId: profileUser._id,
+      reportedUserId: profileUser._id,
+      targetTitle: profileUser.name || 'User Profile',
+    });
+    setIsReportModalOpen(true);
+  };
+
+  const handleOpenReportReview = (rev) => {
+    setReportModalTarget({
+      targetType: 'REVIEW',
+      targetId: rev._id,
+      reportedUserId: rev.reviewer?._id || rev.reviewer,
+      targetTitle: `Review by ${rev.reviewer?.name || 'Peer'}`,
+    });
+    setIsReportModalOpen(true);
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this review?')) return;
+    try {
+      await deleteReview(reviewId);
+      setReviews((prev) => prev.filter((r) => r._id !== reviewId));
+      const targetId = isSelf ? authUser?._id : id;
+      if (targetId) {
+        const profRes = await getPublicProfile(targetId);
+        if (profRes?.data?.user) setProfileUser(profRes.data.user);
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || err.message || 'Failed to delete review');
+    }
+  };
+
+  const handleOpenEditReview = (rev) => {
+    setEditingReview(rev);
+    setEditReviewForm({
+      rating: rev.overallRating || 5,
+      feedbackText: rev.feedbackText || '',
+    });
+    setEditReviewError(null);
+    setIsEditReviewModalOpen(true);
+  };
+
+  const handleSaveEditReview = async (e) => {
+    e.preventDefault();
+    if (!editingReview) return;
+    setSavingReview(true);
+    setEditReviewError(null);
+    try {
+      const res = await updateReview(editingReview._id, editReviewForm);
+      const updated = res?.data?.data?.review || res?.data?.review || {
+        ...editingReview,
+        overallRating: Number(editReviewForm.rating),
+        feedbackText: editReviewForm.feedbackText.trim(),
+      };
+      setReviews((prev) =>
+        prev.map((r) => (r._id === editingReview._id ? { ...r, ...updated } : r))
+      );
+      setIsEditReviewModalOpen(false);
+      const targetId = isSelf ? authUser?._id : id;
+      if (targetId) {
+        const profRes = await getPublicProfile(targetId);
+        if (profRes?.data?.user) setProfileUser(profRes.data.user);
+      }
+    } catch (err) {
+      setEditReviewError(err?.response?.data?.message || err.message || 'Failed to update review');
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
   const userToDisplay = isSelf ? authUser : profileUser;
   const reputation = userToDisplay?.reputation || { averageRating: 5.0, reviewCount: 0 };
 
@@ -201,24 +329,38 @@ export const ProfilePage = () => {
           <Button variant="outline" size="sm" onClick={handleOpenEdit} leftIcon={Edit3}>
             Edit Profile & Skills
           </Button>
-        ) : hasPendingRequest ? (
-          <div className="flex items-center gap-2">
-            <Badge variant="amber" icon={Clock} className="px-3 py-1.5 text-xs font-semibold">
-              Request Pending
-            </Badge>
-            <Button size="sm" variant="outline" disabled leftIcon={Calendar}>
-              Request Sent
-            </Button>
-          </div>
         ) : (
-          <Button
-            size="sm"
-            onClick={handleOpenRequestModal}
-            leftIcon={Calendar}
-            className="bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
-          >
-            Request a Session
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenReportUser}
+              leftIcon={ShieldAlert}
+              className="text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 text-xs"
+              title="Report profile for moderation review"
+            >
+              Report Profile
+            </Button>
+            {hasPendingRequest ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="amber" icon={Clock} className="px-3 py-1.5 text-xs font-semibold">
+                  Request Pending
+                </Badge>
+                <Button size="sm" variant="outline" disabled leftIcon={Calendar}>
+                  Request Sent
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleOpenRequestModal}
+                leftIcon={Calendar}
+                className="bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+              >
+                Request a Session
+              </Button>
+            )}
+          </div>
         )
       }
     >
@@ -257,6 +399,37 @@ export const ProfilePage = () => {
               </div>
             </div>
 
+            {/* V3.6 Authoritative Trust Indicators */}
+            <div className="w-full mt-3 p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-teal-100 dark:border-teal-900/40 text-left space-y-2">
+              <span className="text-[10px] font-bold text-teal-700 dark:text-teal-400 uppercase tracking-wider block">
+                Verified Trust Indicators
+              </span>
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" /> Completed Exchanges:
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 font-bold">
+                  {userToDisplay?.sessionsCompleted || 0}
+                </strong>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" /> Verified Skills:
+                </span>
+                <strong className="text-teal-600 dark:text-teal-400 font-bold">
+                  {(userToDisplay?.skills || []).filter((s) => s.evidence?.verificationStatus === 'VERIFIED').length}
+                </strong>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Rating Record:
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 font-bold">
+                  {reputation.reviewCount > 0 ? `${reputation.averageRating?.toFixed(1)}★ (${reputation.reviewCount})` : 'New Contributor'}
+                </strong>
+              </div>
+            </div>
+
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 w-full text-left space-y-2 text-xs text-slate-500 dark:text-slate-400">
               <div className="flex items-center justify-between">
                 <span>Availability:</span>
@@ -288,12 +461,73 @@ export const ProfilePage = () => {
                   <Award className="w-4 h-4 text-teal-600 dark:text-teal-400" /> Skills Offered (Teaching)
                 </h4>
                 {userToDisplay?.skills && userToDisplay.skills.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {userToDisplay.skills.map((sk, idx) => (
-                      <Badge key={idx} variant="teal">
-                        {sk.name} <span className="text-[10px] opacity-70">({sk.level || 'INTERMEDIATE'})</span>
-                      </Badge>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {userToDisplay.skills.map((sk, idx) => {
+                      const evStatus = sk.evidence?.verificationStatus || 'NOT_SUBMITTED';
+                      const hasEvidence = sk.evidence && (sk.evidence.portfolioUrl || sk.evidence.certificateUrl || sk.evidence.workSampleUrl || sk.evidence.description);
+
+                      return (
+                        <div
+                          key={idx}
+                          className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between gap-2.5 text-xs shadow-sm hover:border-teal-300 dark:hover:border-teal-800 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm block">
+                                {sk.name}
+                              </span>
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                                {sk.category || 'General'} • {sk.level || 'INTERMEDIATE'}
+                              </span>
+                            </div>
+                            {evStatus === 'VERIFIED' && (
+                              <Badge variant="teal" icon={ShieldCheck} size="sm" className="font-bold shrink-0">
+                                Verified
+                              </Badge>
+                            )}
+                            {(evStatus === 'SUBMITTED' || evStatus === 'UNDER_REVIEW') && (
+                              <Badge variant="amber" icon={Clock} size="sm" className="font-semibold shrink-0">
+                                Under Review
+                              </Badge>
+                            )}
+                            {evStatus === 'REJECTED' && (
+                              <Badge variant="rose" icon={AlertCircle} size="sm" className="font-semibold shrink-0">
+                                Rejected
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                            {isSelf ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSkillForEvidence(sk);
+                                  setIsEvidenceModalOpen(true);
+                                }}
+                                className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+                              >
+                                <span>{hasEvidence ? 'Manage Evidence' : '+ Add Evidence'}</span>
+                              </button>
+                            ) : hasEvidence ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSkillForView(sk);
+                                  setIsEvidenceViewModalOpen(true);
+                                }}
+                                className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1.5"
+                              >
+                                <span>View Evidence</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 italic">No external proof attached</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400 dark:text-slate-500 italic">No teaching skills listed.</p>
@@ -330,18 +564,59 @@ export const ProfilePage = () => {
                 <p className="text-xs text-slate-400 dark:text-slate-500 italic py-4 text-center">No peer reviews submitted yet.</p>
               ) : (
                 <div className="space-y-3">
-                  {reviews.map((rev) => (
-                    <div key={rev._id} className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-900 dark:text-slate-100">{rev.reviewer?.name || 'Peer Learner'}</span>
-                        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold">
-                          <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                          <span>{rev.overallRating} / 5</span>
+                  {reviews.map((rev) => {
+                    const revAuthorId = rev.reviewer?._id || rev.reviewer;
+                    const isReviewAuthor = revAuthorId && authUser?._id && (String(revAuthorId) === String(authUser._id));
+                    return (
+                      <div key={rev._id} className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-slate-900 dark:text-slate-100">{rev.reviewer?.name || 'Peer Learner'}</span>
+                          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold">
+                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                            <span>{rev.overallRating} / 5</span>
+                          </div>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-300 italic mb-2">"{rev.feedbackText}"</p>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
+                          <span className="text-slate-400">
+                            {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : 'Verified Session'}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {isReviewAuthor ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditReview(rev)}
+                                  className="text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 font-medium flex items-center gap-1"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteReview(rev._id)}
+                                  className="text-rose-500 hover:text-rose-700 font-medium flex items-center gap-1"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>Delete</span>
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReportReview(rev)}
+                                className="text-slate-400 hover:text-rose-500 font-medium flex items-center gap-1"
+                                title="Report this review"
+                              >
+                                <Flag className="w-3 h-3" />
+                                <span>Report</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <p className="text-slate-600 dark:text-slate-300 italic">"{rev.feedbackText}"</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -539,6 +814,99 @@ export const ProfilePage = () => {
               className="bg-teal-600 hover:bg-teal-700 text-white"
             >
               Send Request
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* V3.6 Skill Evidence Management Modal */}
+      <SkillEvidenceModal
+        isOpen={isEvidenceModalOpen}
+        onClose={() => setIsEvidenceModalOpen(false)}
+        skill={selectedSkillForEvidence}
+        onUpdated={handleEvidenceUpdated}
+      />
+
+      {/* V3.6 Skill Evidence View Modal */}
+      <SkillEvidenceViewModal
+        isOpen={isEvidenceViewModalOpen}
+        onClose={() => setIsEvidenceViewModalOpen(false)}
+        skill={selectedSkillForView}
+        peerName={userToDisplay?.name}
+      />
+
+      {/* V3.6 Moderation Report Modal */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        targetType={reportModalTarget.targetType}
+        targetId={reportModalTarget.targetId}
+        reportedUserId={reportModalTarget.reportedUserId}
+        targetTitle={reportModalTarget.targetTitle}
+      />
+
+      {/* V3.6 Edit Review Modal */}
+      <Modal
+        isOpen={isEditReviewModalOpen}
+        onClose={() => setIsEditReviewModalOpen(false)}
+        title="Edit Session Review"
+        description="Update your rating and feedback for this completed exchange session."
+      >
+        <form onSubmit={handleSaveEditReview} className="space-y-4 text-xs">
+          {editReviewError && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 rounded-xl text-rose-800 dark:text-rose-300 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+              <span>{editReviewError}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1">
+            <label className="font-semibold text-slate-700 dark:text-slate-300">Overall Rating (1 - 5 Stars)</label>
+            <select
+              value={editReviewForm.rating}
+              onChange={(e) => setEditReviewForm({ ...editReviewForm, rating: Number(e.target.value) })}
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              <option value={5}>⭐⭐⭐⭐⭐ (5 - Exceptional Mentor)</option>
+              <option value={4}>⭐⭐⭐⭐ (4 - Very Good)</option>
+              <option value={3}>⭐⭐⭐ (3 - Satisfactory)</option>
+              <option value={2}>⭐⭐ (2 - Needs Improvement)</option>
+              <option value={1}>⭐ (1 - Unsatisfactory)</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="font-semibold text-slate-700 dark:text-slate-300">Feedback Commentary</label>
+            <textarea
+              rows={4}
+              maxLength={1000}
+              value={editReviewForm.feedbackText}
+              onChange={(e) => setEditReviewForm({ ...editReviewForm, feedbackText: e.target.value })}
+              placeholder="Describe your peer mentorship experience..."
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 leading-relaxed"
+              required
+            />
+            <span className="text-[10px] text-slate-400 text-right">
+              {editReviewForm.feedbackText.length} / 1000 characters
+            </span>
+          </div>
+
+          <div className="pt-2 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsEditReviewModalOpen(false)}
+              disabled={savingReview}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={savingReview}
+              disabled={savingReview || !editReviewForm.feedbackText.trim()}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              Update Review
             </Button>
           </div>
         </form>

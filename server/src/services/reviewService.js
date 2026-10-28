@@ -226,3 +226,107 @@ export const getUserReviews = async (userId) => {
     .populate('reviewer', 'name avatar')
     .sort({ createdAt: -1 });
 };
+
+/**
+ * Updates an existing review. Only the original author can edit their review.
+ */
+export const updateReview = async (reviewId, userId, updateData) => {
+  if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+    throw new ApiError(404, 'Review not found');
+  }
+
+  const review = await Review.findById(reviewId);
+  if (!review) throw new ApiError(404, 'Review not found');
+
+  const callerIdStr = (userId?._id ? userId._id : userId).toString();
+  if (review.reviewer.toString() !== callerIdStr) {
+    throw new ApiError(403, 'Forbidden: You can only edit your own reviews');
+  }
+
+  const { teachingRating, communicationRating, reliabilityRating, feedbackText, rating } = updateData || {};
+
+  let tRating = Number(teachingRating);
+  let cRating = Number(communicationRating);
+  let rRating = Number(reliabilityRating);
+
+  if ((isNaN(tRating) || isNaN(cRating) || isNaN(rRating)) && rating !== undefined) {
+    const s = Number(rating);
+    tRating = s;
+    cRating = s;
+    rRating = s;
+  }
+
+  // Preserve existing ratings if not updated
+  if (isNaN(tRating)) tRating = review.teachingRating;
+  if (isNaN(cRating)) cRating = review.communicationRating;
+  if (isNaN(rRating)) rRating = review.reliabilityRating;
+
+  if ([tRating, cRating, rRating].some((r) => isNaN(r) || r < 1 || r > 5)) {
+    throw new ApiError(400, 'Teaching, communication, and reliability ratings must be valid numbers between 1 and 5');
+  }
+
+  const cleanFeedback = feedbackText !== undefined ? feedbackText.trim() : review.feedbackText;
+  if (cleanFeedback.length > 1000) {
+    throw new ApiError(400, 'Feedback cannot exceed 1000 characters');
+  }
+
+  const overallRating = Math.round(((tRating + cRating + rRating) / 3) * 10) / 10;
+
+  review.teachingRating = tRating;
+  review.communicationRating = cRating;
+  review.reliabilityRating = rRating;
+  review.overallRating = overallRating;
+  review.feedbackText = cleanFeedback;
+  await review.save();
+
+  // Recalculate reviewee reputation
+  const allReviews = await Review.find({ reviewee: review.reviewee });
+  const totalAvg = allReviews.reduce((acc, r) => acc + r.overallRating, 0) / (allReviews.length || 1);
+  const roundedRating = Math.round(totalAvg * 10) / 10;
+
+  await User.findByIdAndUpdate(review.reviewee, {
+    reputation: {
+      averageRating: roundedRating,
+      reviewCount: allReviews.length,
+    },
+  });
+
+  return review;
+};
+
+/**
+ * Deletes an existing review. Permitted for the author or an authorized admin.
+ */
+export const deleteReview = async (reviewId, userId, isAdmin = false) => {
+  if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+    throw new ApiError(404, 'Review not found');
+  }
+
+  const review = await Review.findById(reviewId);
+  if (!review) throw new ApiError(404, 'Review not found');
+
+  const callerIdStr = (userId?._id ? userId._id : userId).toString();
+  if (review.reviewer.toString() !== callerIdStr && !isAdmin) {
+    throw new ApiError(403, 'Forbidden: You are not authorized to delete this review');
+  }
+
+  const targetRevieweeId = review.reviewee;
+  await Review.findByIdAndDelete(reviewId);
+
+  // Recalculate reviewee reputation
+  const remainingReviews = await Review.find({ reviewee: targetRevieweeId });
+  const avg =
+    remainingReviews.length > 0
+      ? Math.round((remainingReviews.reduce((acc, r) => acc + r.overallRating, 0) / remainingReviews.length) * 10) / 10
+      : 5.0;
+
+  await User.findByIdAndUpdate(targetRevieweeId, {
+    reputation: {
+      averageRating: avg,
+      reviewCount: remainingReviews.length,
+    },
+  });
+
+  return { success: true, message: 'Review deleted successfully' };
+};
+
