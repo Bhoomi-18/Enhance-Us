@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import Button from '../components/ui/Button';
+import usePageMeta from '../hooks/usePageMeta';
 
 export const NotFoundPage = () => {
+  usePageMeta('Page Not Found | EnhanceUs');
+
   return (
     <PageContainer>
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">

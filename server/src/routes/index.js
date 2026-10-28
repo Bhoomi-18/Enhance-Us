@@ -24,6 +24,7 @@ import insightsRoutes from './insightsRoutes.js';
 import demoRoutes from './demoRoutes.js';
 import reportRoutes from './reportRoutes.js';
 import skillEvidenceRoutes from './skillEvidenceRoutes.js';
+import workspaceRoutes from './workspaceRoutes.js';
 
 const router = Router();
 
@@ -52,6 +53,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/reports', reportRoutes);
 router.use('/search', searchRoutes);
 router.use('/feedback', feedbackRoutes);
+router.use('/workspaces', workspaceRoutes);
 router.use('/demo', demoRoutes);
 
 export default router;

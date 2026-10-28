@@ -1716,4 +1716,328 @@ export const deleteReview = async (workspaceId, reviewId, userId) => {
   return { success: true, message: 'Review deleted successfully' };
 };
 
+// =========================================================================
+// V3.7 Collaborative Workspace Demo Isolation Handlers
+// =========================================================================
+
+export const createCollaborativeWorkspace = async (workspaceId, workspaceData, creator) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const { title, description, associatedSkill, associatedGoalTitle, visibility } = workspaceData || {};
+
+  const cleanTitle = (title || '').trim();
+  if (!cleanTitle) throw new ApiError(400, 'Workspace title is required');
+
+  const newWorkspace = {
+    _id: 'cws_' + Date.now(),
+    title: cleanTitle,
+    description: (description || '').trim() || 'Collaborative workspace in demo sandbox',
+    associatedSkill: (associatedSkill || '').trim() || 'Software Engineering',
+    associatedGoalTitle: (associatedGoalTitle || '').trim(),
+    owner: {
+      _id: creator?._id || ws.userId,
+      name: ws.data.profile?.name || 'Alex Morgan',
+      email: ws.data.profile?.email || 'demo@enhanceus.org',
+      avatar: null,
+    },
+    visibility: visibility === 'PUBLIC' ? 'PUBLIC' : 'PRIVATE',
+    members: [
+      {
+        user: {
+          _id: creator?._id || ws.userId,
+          name: ws.data.profile?.name || 'Alex Morgan',
+          email: ws.data.profile?.email || 'demo@enhanceus.org',
+          avatar: null,
+        },
+        role: 'OWNER',
+        joinedAt: new Date().toISOString(),
+      },
+    ],
+    invitations: [],
+    milestones: [],
+    resources: [],
+    notes: {
+      content: '',
+      lastUpdatedBy: {
+        _id: creator?._id || ws.userId,
+        name: ws.data.profile?.name || 'Alex Morgan',
+      },
+      updatedAt: new Date().toISOString(),
+    },
+    discussions: [],
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  ws.data.collaborativeWorkspaces = ws.data.collaborativeWorkspaces || [];
+  ws.data.collaborativeWorkspaces.unshift(newWorkspace);
+  await saveWorkspace(ws);
+
+  return newWorkspace;
+};
+
+export const getUserCollaborativeWorkspaces = async (workspaceId) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const workspaces = (ws.data.collaborativeWorkspaces || []).filter((w) => !w.isArchived);
+
+  const formatted = workspaces.map((w) => {
+    const completed = (w.milestones || []).filter((m) => m.status === 'COMPLETED').length;
+    const total = (w.milestones || []).length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { ...w, progress };
+  });
+
+  return {
+    workspaces: formatted,
+    pendingInvitations: [],
+  };
+};
+
+export const getDiscoverableCollaborativeWorkspaces = async (workspaceId, query = {}) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const workspaces = (ws.data.collaborativeWorkspaces || []).filter(
+    (w) => w.visibility === 'PUBLIC' && !w.isArchived
+  );
+
+  return workspaces.map((w) => {
+    const completed = (w.milestones || []).filter((m) => m.status === 'COMPLETED').length;
+    const total = (w.milestones || []).length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { ...w, progress, isMember: true };
+  });
+};
+
+export const getCollaborativeWorkspaceById = async (workspaceId, targetId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found in demo sandbox');
+
+  const completed = (target.milestones || []).filter((m) => m.status === 'COMPLETED').length;
+  const total = (target.milestones || []).length;
+  const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  return {
+    ...target,
+    progress,
+    isMember: true,
+    isOwner: true,
+    userRole: 'OWNER',
+  };
+};
+
+export const updateCollaborativeWorkspace = async (workspaceId, targetId, updateData, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found in demo sandbox');
+
+  const { title, description, associatedSkill, visibility, isArchived } = updateData || {};
+  if (title !== undefined) target.title = title.trim();
+  if (description !== undefined) target.description = description.trim();
+  if (associatedSkill !== undefined) target.associatedSkill = associatedSkill.trim();
+  if (visibility !== undefined) target.visibility = visibility;
+  if (isArchived !== undefined) target.isArchived = Boolean(isArchived);
+  target.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return target;
+};
+
+export const inviteCollaborativeMember = async (workspaceId, targetId, targetUserId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  const peer = (ws.data.peers || []).find((p) => p._id === targetUserId);
+  const memberName = peer?.name || 'Peer Collaborator';
+
+  target.members = target.members || [];
+  target.members.push({
+    user: {
+      _id: targetUserId,
+      name: memberName,
+      email: `${memberName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+      avatar: null,
+    },
+    role: 'MEMBER',
+    joinedAt: new Date().toISOString(),
+  });
+
+  await saveWorkspace(ws);
+  return { message: `Simulated invitation accepted: ${memberName} added to workspace.` };
+};
+
+export const respondToCollaborativeInvitation = async (workspaceId, targetId, response, user) => {
+  return { message: 'Demo invitation updated successfully', status: 'ACCEPTED' };
+};
+
+export const removeCollaborativeMember = async (workspaceId, targetId, memberUserId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  target.members = (target.members || []).filter(
+    (m) => (m.user?._id || m.user) !== memberUserId
+  );
+  await saveWorkspace(ws);
+  return { message: 'Member removed successfully from demo workspace' };
+};
+
+export const addCollaborativeMilestone = async (workspaceId, targetId, milestoneData, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  const { title, description, assignedTo, dueDate } = milestoneData || {};
+  if (!title || !title.trim()) throw new ApiError(400, 'Milestone title is required');
+
+  const newMilestone = {
+    _id: 'cws_ms_' + Date.now(),
+    title: title.trim(),
+    description: (description || '').trim(),
+    status: 'NOT_STARTED',
+    assignedTo: {
+      _id: user?._id || ws.userId,
+      name: user?.name || ws.data.profile?.name || 'Alex Morgan',
+    },
+    dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+    createdAt: new Date().toISOString(),
+  };
+
+  target.milestones = target.milestones || [];
+  target.milestones.push(newMilestone);
+  target.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return newMilestone;
+};
+
+export const updateCollaborativeMilestone = async (workspaceId, targetId, milestoneId, updateData, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  const milestone = (target.milestones || []).find((m) => m._id === milestoneId);
+  if (!milestone) throw new ApiError(404, 'Milestone not found');
+
+  const { title, description, status } = updateData || {};
+  if (title !== undefined) milestone.title = title.trim();
+  if (description !== undefined) milestone.description = description.trim();
+  if (status !== undefined) {
+    milestone.status = status;
+    if (status === 'COMPLETED') {
+      milestone.completedAt = new Date().toISOString();
+      milestone.completedBy = {
+        _id: user?._id || ws.userId,
+        name: user?.name || ws.data.profile?.name || 'Alex Morgan',
+      };
+    } else {
+      milestone.completedAt = null;
+      milestone.completedBy = null;
+    }
+  }
+
+  target.updatedAt = new Date().toISOString();
+  await saveWorkspace(ws);
+  return milestone;
+};
+
+export const deleteCollaborativeMilestone = async (workspaceId, targetId, milestoneId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  target.milestones = (target.milestones || []).filter((m) => m._id !== milestoneId);
+  target.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return { message: 'Milestone removed successfully' };
+};
+
+export const addCollaborativeResource = async (workspaceId, targetId, resourceData, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  const { title, url, description } = resourceData || {};
+  if (!title || !title.trim()) throw new ApiError(400, 'Resource title is required');
+  if (!url || !/^https?:\/\/.+/i.test(url.trim())) throw new ApiError(400, 'Valid HTTP/HTTPS URL is required');
+
+  const newResource = {
+    _id: 'cws_res_' + Date.now(),
+    title: title.trim(),
+    url: url.trim(),
+    description: (description || '').trim(),
+    addedBy: {
+      _id: user?._id || ws.userId,
+      name: user?.name || ws.data.profile?.name || 'Alex Morgan',
+    },
+    addedAt: new Date().toISOString(),
+  };
+
+  target.resources = target.resources || [];
+  target.resources.push(newResource);
+  target.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return newResource;
+};
+
+export const deleteCollaborativeResource = async (workspaceId, targetId, resourceId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  target.resources = (target.resources || []).filter((r) => r._id !== resourceId);
+  target.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return { message: 'Resource removed successfully' };
+};
+
+export const updateCollaborativeNotes = async (workspaceId, targetId, content, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  target.notes = {
+    content: typeof content === 'string' ? content : '',
+    lastUpdatedBy: {
+      _id: user?._id || ws.userId,
+      name: user?.name || ws.data.profile?.name || 'Alex Morgan',
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  target.updatedAt = new Date().toISOString();
+  await saveWorkspace(ws);
+  return target.notes;
+};
+
+export const addCollaborativeDiscussionMessage = async (workspaceId, targetId, content, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const target = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === targetId);
+  if (!target) throw new ApiError(404, 'Collaborative workspace not found');
+
+  const cleanContent = (content || '').trim();
+  if (!cleanContent) throw new ApiError(400, 'Message cannot be empty');
+
+  const newMsg = {
+    _id: 'cws_disc_' + Date.now(),
+    author: {
+      _id: user?._id || ws.userId,
+      name: user?.name || ws.data.profile?.name || 'Alex Morgan',
+    },
+    content: cleanContent,
+    createdAt: new Date().toISOString(),
+  };
+
+  target.discussions = target.discussions || [];
+  target.discussions.push(newMsg);
+  target.updatedAt = new Date().toISOString();
+
+  await saveWorkspace(ws);
+  return newMsg;
+};
+
+
 

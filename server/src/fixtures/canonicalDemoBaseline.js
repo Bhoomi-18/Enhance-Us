@@ -19,7 +19,7 @@
  * Always clone via getCanonicalBaseline() before mutating in a workspace.
  */
 
-export const BASELINE_VERSION = '3.6.0';
+export const BASELINE_VERSION = '3.7.0';
 
 export const DEMO_USER_ID = 'demo_user_canonical_001';
 export const DEMO_PEER_ID = 'demo_peer_sarah_002';
@@ -898,6 +898,150 @@ export const CANONICAL_DEMO_BASELINE = {
       actionTaken: 'NONE',
       metadata: { skillName: 'Docker Containers' },
       createdAt: '2026-10-20T11:00:00.000Z',
+    },
+  ],
+
+  // 19. Collaborative Workspaces (V3.7 Demo Showcase)
+  collaborativeWorkspaces: [
+    {
+      _id: 'cws_fullstack_saas_001',
+      title: 'Full-Stack SaaS Collaborative Lab',
+      description: 'A focused working group designing, building, and deploying real-world SaaS applications with React, Node.js, and Docker.',
+      associatedSkill: 'Full-Stack Development',
+      associatedGoalTitle: 'AI SaaS Blueprint',
+      owner: {
+        _id: DEMO_USER_ID,
+        name: 'Alex Morgan',
+        email: 'demo@enhanceus.org',
+        avatar: null,
+      },
+      visibility: 'PRIVATE',
+      members: [
+        {
+          user: {
+            _id: DEMO_USER_ID,
+            name: 'Alex Morgan',
+            email: 'demo@enhanceus.org',
+            avatar: null,
+          },
+          role: 'OWNER',
+          joinedAt: '2026-10-15T10:00:00.000Z',
+        },
+        {
+          user: {
+            _id: DEMO_PEER_ID,
+            name: 'Sarah Chen',
+            email: 'sarah.chen@techsphere.io',
+            avatar: null,
+          },
+          role: 'MEMBER',
+          joinedAt: '2026-10-16T14:30:00.000Z',
+        },
+        {
+          user: {
+            _id: DEMO_PEER_MARCUS_ID,
+            name: 'Marcus Vance',
+            email: 'marcus.vance@cloudnative.dev',
+            avatar: null,
+          },
+          role: 'MEMBER',
+          joinedAt: '2026-10-17T09:15:00.000Z',
+        },
+      ],
+      invitations: [],
+      milestones: [
+        {
+          _id: 'cws_ms_001',
+          title: 'Architecture Blueprint & Database Entity Schemas',
+          description: 'Define relational and document schemas with indexing strategies.',
+          status: 'COMPLETED',
+          assignedTo: {
+            _id: DEMO_USER_ID,
+            name: 'Alex Morgan',
+          },
+          completedAt: '2026-10-20T16:00:00.000Z',
+          createdAt: '2026-10-15T11:00:00.000Z',
+        },
+        {
+          _id: 'cws_ms_002',
+          title: 'Implement Multi-Tenant JWT & Workspace Sandbox',
+          description: 'Enforce complete multi-tenant tenant isolation and 24h TTL store.',
+          status: 'IN_PROGRESS',
+          assignedTo: {
+            _id: DEMO_PEER_ID,
+            name: 'Sarah Chen',
+          },
+          dueDate: '2026-11-05T00:00:00.000Z',
+          createdAt: '2026-10-18T10:00:00.000Z',
+        },
+        {
+          _id: 'cws_ms_003',
+          title: 'Automated CI/CD Pipeline & End-to-End Regression Suite',
+          description: 'Write integration suites testing all API requirements.',
+          status: 'NOT_STARTED',
+          assignedTo: {
+            _id: DEMO_PEER_MARCUS_ID,
+            name: 'Marcus Vance',
+          },
+          dueDate: '2026-11-15T00:00:00.000Z',
+          createdAt: '2026-10-19T09:00:00.000Z',
+        },
+      ],
+      resources: [
+        {
+          _id: 'cws_res_001',
+          title: 'System Design Interview & Architecture Guide',
+          url: 'https://github.com/donnemartin/system-design-primer',
+          description: 'Comprehensive primer on large-scale system architecture.',
+          addedBy: {
+            _id: DEMO_USER_ID,
+            name: 'Alex Morgan',
+          },
+          addedAt: '2026-10-16T12:00:00.000Z',
+        },
+        {
+          _id: 'cws_res_002',
+          title: 'Docker Production Best Practices',
+          url: 'https://docs.docker.com/develop/develop-images/dockerfile_best-practices/',
+          description: 'Multi-stage builds, least-privilege users, and minimal base images.',
+          addedBy: {
+            _id: DEMO_PEER_MARCUS_ID,
+            name: 'Marcus Vance',
+          },
+          addedAt: '2026-10-17T15:00:00.000Z',
+        },
+      ],
+      notes: {
+        content: '### Core Architecture Decisions\n- **Database**: MongoDB with compound indexing for session and workspace lookups.\n- **Authentication**: Stateless signed JWT with workspace sandbox ID.\n- **Styling**: Tailwind CSS with dark mode.\n- **Collaboration Rules**: Milestones require peer sign-off before marking complete.',
+        lastUpdatedBy: {
+          _id: DEMO_USER_ID,
+          name: 'Alex Morgan',
+        },
+        updatedAt: '2026-10-22T11:00:00.000Z',
+      },
+      discussions: [
+        {
+          _id: 'cws_disc_001',
+          author: {
+            _id: DEMO_PEER_ID,
+            name: 'Sarah Chen',
+          },
+          content: 'Hey team! I have updated the multi-tenant isolation branch. Please test the sandbox reset behavior.',
+          createdAt: '2026-10-21T09:30:00.000Z',
+        },
+        {
+          _id: 'cws_disc_002',
+          author: {
+            _id: DEMO_USER_ID,
+            name: 'Alex Morgan',
+          },
+          content: 'Looks great Sarah! Tested the reset endpoint and verified canonical fixtures are completely immutable.',
+          createdAt: '2026-10-21T10:15:00.000Z',
+        },
+      ],
+      isArchived: false,
+      createdAt: '2026-10-15T10:00:00.000Z',
+      updatedAt: '2026-10-22T11:00:00.000Z',
     },
   ],
 };

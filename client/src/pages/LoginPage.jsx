@@ -8,11 +8,14 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import { useAuth } from '../context/AuthContext';
 import { forgotPassword } from '../services/authService';
+import usePageMeta from '../hooks/usePageMeta';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+
+  usePageMeta('Log In | EnhanceUs', 'Log in to your EnhanceUs account to continue your skill exchanges and track learning roadmaps.');
 
   const from = location.state?.from?.pathname || '/dashboard';
 

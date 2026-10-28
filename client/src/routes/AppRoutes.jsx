@@ -22,6 +22,8 @@ import VerifyEmailPage from '../pages/VerifyEmailPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import CirclesPage from '../pages/CirclesPage';
 import CircleDetailPage from '../pages/CircleDetailPage';
+import WorkspacesPage from '../pages/WorkspacesPage';
+import WorkspaceDetailPage from '../pages/WorkspaceDetailPage';
 import CoachPage from '../pages/CoachPage';
 import CommunityInsightsPage from '../pages/CommunityInsightsPage';
 import AdminPage from '../pages/AdminPage';
@@ -160,6 +162,22 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <CircleDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="workspaces"
+          element={
+            <ProtectedRoute>
+              <WorkspacesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="workspaces/:id"
+          element={
+            <ProtectedRoute>
+              <WorkspaceDetailPage />
             </ProtectedRoute>
           }
         />

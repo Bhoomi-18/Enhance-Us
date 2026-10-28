@@ -20,9 +20,16 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import GoalPipelineVisual from '../components/common/GoalPipelineVisual';
+import usePageMeta from '../hooks/usePageMeta';
 
 export const HomePage = () => {
   const { isAuthenticated } = useAuth();
+
+  usePageMeta(
+    'EnhanceUs - Goal-Driven Peer Skill Exchange',
+    'EnhanceUs is a goal-driven peer-to-peer skill exchange platform that identifies capability gaps and connects you with verified mentors and collaborative learners.',
+    'https://www.briefenai.me/'
+  );
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;

@@ -23,6 +23,7 @@ import {
   TrendingUp,
   BookOpen,
   RotateCcw,
+  Layers,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealth } from '../../hooks/useHealth';
@@ -143,6 +144,7 @@ export const Navbar = () => {
 
   const isCommunityActive =
     location.pathname.startsWith('/circles') ||
+    location.pathname.startsWith('/workspaces') ||
     location.pathname.startsWith('/matches') ||
     location.pathname.startsWith('/messages');
 
@@ -174,6 +176,13 @@ export const Navbar = () => {
   ];
 
   const communityItems = [
+    {
+      label: 'Workspaces',
+      path: '/workspaces',
+      icon: Layers,
+      description: 'Collaborative spaces for shared goals, notes & milestones',
+      badge: 'V3.7',
+    },
     {
       label: 'Circles',
       path: '/circles',

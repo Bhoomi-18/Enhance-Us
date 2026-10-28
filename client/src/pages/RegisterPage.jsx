@@ -5,12 +5,14 @@ import PageContainer from '../components/layout/PageContainer';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
 import { useAuth } from '../context/AuthContext';
+import usePageMeta from '../hooks/usePageMeta';
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+
+  usePageMeta('Create an Account | EnhanceUs', 'Join EnhanceUs to map your learning goals, exchange skills with peers, and build verified capabilities.');
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);

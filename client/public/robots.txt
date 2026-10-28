@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /verify-email
+Disallow: /reset-password
+Disallow: /settings
+Disallow: /notifications
+Disallow: /messages
+Disallow: /search
+
+Sitemap: https://www.briefenai.me/sitemap.xml
