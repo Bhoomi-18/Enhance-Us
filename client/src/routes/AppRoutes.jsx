@@ -1,41 +1,58 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
-import HomePage from '../pages/HomePage';
-import LoginPage from '../pages/LoginPage';
-import RegisterPage from '../pages/RegisterPage';
-import DashboardPage from '../pages/DashboardPage';
-import ProfilePage from '../pages/ProfilePage';
-import GoalsPage from '../pages/GoalsPage';
-import GoalDetailPage from '../pages/GoalDetailPage';
-import RoadmapsPage from '../pages/RoadmapsPage';
-import RoadmapDetailPage from '../pages/RoadmapDetailPage';
-import MatchesPage from '../pages/MatchesPage';
-import MatchDetailPage from '../pages/MatchDetailPage';
-import MessagesPage from '../pages/MessagesPage';
-import SessionsPage from '../pages/SessionsPage';
-import NotificationsPage from '../pages/NotificationsPage';
-import SearchPage from '../pages/SearchPage';
-import SettingsPage from '../pages/SettingsPage';
-import NotFoundPage from '../pages/NotFoundPage';
-import VerifyEmailPage from '../pages/VerifyEmailPage';
-import ResetPasswordPage from '../pages/ResetPasswordPage';
-import CirclesPage from '../pages/CirclesPage';
-import CircleDetailPage from '../pages/CircleDetailPage';
-import WorkspacesPage from '../pages/WorkspacesPage';
-import WorkspaceDetailPage from '../pages/WorkspaceDetailPage';
-import ChallengesPage from '../pages/ChallengesPage';
-import ChallengeDetailPage from '../pages/ChallengeDetailPage';
-import CoachPage from '../pages/CoachPage';
-import CommunityInsightsPage from '../pages/CommunityInsightsPage';
-import AdminPage from '../pages/AdminPage';
 import ProtectedRoute from './ProtectedRoute';
 import PublicOnlyRoute from './PublicOnlyRoute';
 import AdminRoute from './AdminRoute';
 
+// Route-level code splitting for optimized bundle delivery and fast TTI
+const HomePage = lazy(() => import('../pages/HomePage'));
+const LoginPage = lazy(() => import('../pages/LoginPage'));
+const RegisterPage = lazy(() => import('../pages/RegisterPage'));
+const DashboardPage = lazy(() => import('../pages/DashboardPage'));
+const ProfilePage = lazy(() => import('../pages/ProfilePage'));
+const GoalsPage = lazy(() => import('../pages/GoalsPage'));
+const GoalDetailPage = lazy(() => import('../pages/GoalDetailPage'));
+const RoadmapsPage = lazy(() => import('../pages/RoadmapsPage'));
+const RoadmapDetailPage = lazy(() => import('../pages/RoadmapDetailPage'));
+const MatchesPage = lazy(() => import('../pages/MatchesPage'));
+const MatchDetailPage = lazy(() => import('../pages/MatchDetailPage'));
+const MessagesPage = lazy(() => import('../pages/MessagesPage'));
+const SessionsPage = lazy(() => import('../pages/SessionsPage'));
+const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
+const SearchPage = lazy(() => import('../pages/SearchPage'));
+const SettingsPage = lazy(() => import('../pages/SettingsPage'));
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
+const VerifyEmailPage = lazy(() => import('../pages/VerifyEmailPage'));
+const ResetPasswordPage = lazy(() => import('../pages/ResetPasswordPage'));
+const CirclesPage = lazy(() => import('../pages/CirclesPage'));
+const CircleDetailPage = lazy(() => import('../pages/CircleDetailPage'));
+const WorkspacesPage = lazy(() => import('../pages/WorkspacesPage'));
+const WorkspaceDetailPage = lazy(() => import('../pages/WorkspaceDetailPage'));
+const ChallengesPage = lazy(() => import('../pages/ChallengesPage'));
+const ChallengeDetailPage = lazy(() => import('../pages/ChallengeDetailPage'));
+const CoachPage = lazy(() => import('../pages/CoachPage'));
+const CommunityInsightsPage = lazy(() => import('../pages/CommunityInsightsPage'));
+const AdminPage = lazy(() => import('../pages/AdminPage'));
+
+const PageLoadingFallback = () => (
+  <div
+    role="status"
+    aria-live="polite"
+    className="min-h-[50vh] flex flex-col items-center justify-center p-8 text-center space-y-3"
+  >
+    <div className="w-10 h-10 border-3 border-teal-500/20 border-t-teal-600 dark:border-teal-400/20 dark:border-t-teal-400 rounded-full animate-spin" />
+    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
+      Loading view...
+    </span>
+    <span className="sr-only">Content is loading, please wait</span>
+  </div>
+);
+
 export const AppRoutes = () => {
   return (
-    <Routes>
+    <Suspense fallback={<PageLoadingFallback />}>
+      <Routes>
       <Route path="/" element={<MainLayout />}>
         {/* Public Landing Page */}
         <Route index element={<HomePage />} />
@@ -246,6 +263,7 @@ export const AppRoutes = () => {
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
+    </Suspense>
   );
 };
 

@@ -2574,5 +2574,134 @@ export const getUserDemoAchievements = async (workspaceId, user) => {
   };
 };
 
+/** ==========================================================================
+ * UNIVERSAL DISCOVERY & SEARCH (SANDBOX ISOLATED)
+ * ========================================================================== */
+
+export const searchInWorkspace = async (workspaceId, query = {}) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const {
+    q = '',
+    category,
+    level,
+    availability,
+    language,
+    teachableSkill,
+    desiredSkill,
+    sortBy = 'relevance',
+  } = query;
+  const term = q.trim().toLowerCase();
+
+  // 1. Skills taxonomy from demo baseline
+  const baselineSkills = [
+    { name: 'React', category: 'Frontend' },
+    { name: 'Node.js', category: 'Backend' },
+    { name: 'UI/UX Design', category: 'Design' },
+    { name: 'Figma Prototyping', category: 'Design' },
+    { name: 'Docker', category: 'DevOps' },
+    { name: 'Python', category: 'Backend' },
+    { name: 'System Design', category: 'Architecture' },
+    { name: 'Microservices', category: 'Architecture' },
+  ];
+  const skills = baselineSkills.filter((s) => {
+    if (term && !s.name.toLowerCase().includes(term) && !s.category.toLowerCase().includes(term)) return false;
+    if (category && s.category.toLowerCase() !== category.toLowerCase()) return false;
+    return true;
+  });
+
+  // 2. People (from demo matches / peers)
+  const candidates = (ws.data.matches || []).map((m) => m.candidate).filter(Boolean);
+  let people = candidates.filter((p) => {
+    if (term) {
+      const matchName = p.name?.toLowerCase().includes(term);
+      const matchBio = p.bio?.toLowerCase().includes(term);
+      const matchSkill = p.skills?.some((s) => s.name?.toLowerCase().includes(term));
+      if (!matchName && !matchBio && !matchSkill) return false;
+    }
+    if (teachableSkill) {
+      const tLower = teachableSkill.toLowerCase();
+      const hasTeach = p.skills?.some(
+        (s) => (s.type === 'TEACH' || s.type === 'both' || !s.type) && s.name?.toLowerCase().includes(tLower)
+      );
+      if (!hasTeach) return false;
+    }
+    if (desiredSkill) {
+      const dLower = desiredSkill.toLowerCase();
+      const hasLearn = p.learningInterests?.some((i) => i.name?.toLowerCase().includes(dLower));
+      if (!hasLearn) return false;
+    }
+    if (level && !p.skills?.some((s) => s.level?.toUpperCase() === level.toUpperCase())) return false;
+    if (availability && (p.availability || 'flexible').toLowerCase() !== availability.toLowerCase()) return false;
+    if (language && !p.languages?.some((l) => l.toLowerCase() === language.toLowerCase())) return false;
+    return true;
+  }).map((p) => ({
+    _id: p._id,
+    name: p.name,
+    avatar: p.avatar,
+    bio: p.bio,
+    skills: p.skills || [],
+    learningInterests: p.learningInterests || [],
+    availability: p.availability || 'flexible',
+    timezone: p.timezone || 'UTC',
+    experienceLevel: p.experienceLevel || 'INTERMEDIATE',
+    reputation: p.reputation || { averageRating: 5.0, reviewCount: 1 },
+  }));
+
+  // Sorting
+  if (sortBy === 'rating') {
+    people.sort((a, b) => (b.reputation?.averageRating || 0) - (a.reputation?.averageRating || 0));
+  } else if (sortBy === 'recent') {
+    people.reverse();
+  }
+
+  // 3. Goals
+  const goals = (ws.data.goals || []).filter((g) => {
+    if (term) {
+      const matchTitle = g.title?.toLowerCase().includes(term);
+      const matchDesc = g.description?.toLowerCase().includes(term);
+      const matchSkill = g.requiredSkills?.some((s) => s.name?.toLowerCase().includes(term));
+      return matchTitle || matchDesc || matchSkill;
+    }
+    return true;
+  });
+
+  // 4. Challenges
+  const challenges = (ws.data.challenges || []).filter((ch) => {
+    if (ch.visibility === 'PRIVATE' || ch.isArchived) return false;
+    if (term) {
+      const matchTitle = ch.title?.toLowerCase().includes(term);
+      const matchDesc = ch.description?.toLowerCase().includes(term);
+      const matchSkill = ch.associatedSkill?.toLowerCase().includes(term);
+      return matchTitle || matchDesc || matchSkill;
+    }
+    return true;
+  });
+
+  // 5. Workspaces
+  const workspaces = (ws.data.workspaces || []).filter((w) => {
+    if (w.visibility === 'PRIVATE') return false;
+    if (term) {
+      const matchTitle = w.title?.toLowerCase().includes(term);
+      const matchDesc = w.description?.toLowerCase().includes(term);
+      const matchSkill = w.associatedSkill?.toLowerCase().includes(term);
+      return matchTitle || matchDesc || matchSkill;
+    }
+    return true;
+  });
+
+  return {
+    skills,
+    people,
+    goals,
+    challenges,
+    workspaces,
+    pagination: {
+      page: 1,
+      limit: 20,
+      totalCount: people.length + challenges.length + workspaces.length + goals.length,
+    },
+  };
+};
+
 
 

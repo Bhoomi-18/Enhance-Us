@@ -9,7 +9,8 @@ export const Button = React.forwardRef(
       className,
       variant = 'primary', // 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
       size = 'md', // 'sm' | 'md' | 'lg'
-      isLoading = false,
+      isLoading: propIsLoading = false,
+      loading = false,
       disabled = false,
       leftIcon: LeftIcon,
       rightIcon: RightIcon,
@@ -18,6 +19,7 @@ export const Button = React.forwardRef(
     },
     ref
   ) => {
+    const isLoading = propIsLoading || loading;
     const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]';
 
     const variants = {

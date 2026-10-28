@@ -153,45 +153,55 @@ export const getChallenges = async (userId = null, query = {}) => {
     ];
   }
 
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 50));
+  const skip = (page - 1) * limit;
+
   const challenges = await Challenge.find(filter)
-    .populate('creator', 'name email avatar')
+    .populate('creator', 'name avatar')
     .sort({ startDate: -1 })
+    .skip(skip)
+    .limit(limit)
     .lean();
 
-  // Enhance each challenge with dynamic participation stats
-  const enhanced = await Promise.all(
-    challenges.map(async (ch) => {
-      const derivedStatus = deriveChallengeStatus(ch);
-      const participantCount = await ChallengeParticipation.countDocuments({
-        challenge: ch._id,
-        status: { $ne: 'ABANDONED' },
-      });
+  const challengeIds = challenges.map((ch) => ch._id);
 
-      let isJoined = false;
-      let userProgress = 0;
+  // Batch aggregate participant counts (O(1) database query instead of O(N))
+  const counts = challengeIds.length > 0
+    ? await ChallengeParticipation.aggregate([
+        { $match: { challenge: { $in: challengeIds }, status: { $ne: 'ABANDONED' } } },
+        { $group: { _id: '$challenge', count: { $sum: 1 } } },
+      ])
+    : [];
+  const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
 
-      if (userId) {
-        const userPart = await ChallengeParticipation.findOne({
-          challenge: ch._id,
-          user: userId,
-          status: { $ne: 'ABANDONED' },
-        }).lean();
+  // Batch query user participations (O(1) database query instead of O(N))
+  const userPartMap = new Map();
+  if (userId && challengeIds.length > 0) {
+    const userParts = await ChallengeParticipation.find({
+      challenge: { $in: challengeIds },
+      user: userId,
+      status: { $ne: 'ABANDONED' },
+    }).lean();
+    userParts.forEach((up) => userPartMap.set(up.challenge.toString(), up));
+  }
 
-        if (userPart) {
-          isJoined = true;
-          userProgress = userPart.progress || 0;
-        }
-      }
+  // Enhance each challenge with dynamic participation stats synchronously
+  const enhanced = challenges.map((ch) => {
+    const derivedStatus = deriveChallengeStatus(ch);
+    const participantCount = countMap.get(ch._id.toString()) || 0;
+    const userPart = userPartMap.get(ch._id.toString());
+    const isJoined = Boolean(userPart);
+    const userProgress = userPart?.progress || 0;
 
-      return {
-        ...ch,
-        status: derivedStatus,
-        participantCount,
-        isJoined,
-        userProgress,
-      };
-    })
-  );
+    return {
+      ...ch,
+      status: derivedStatus,
+      participantCount,
+      isJoined,
+      userProgress,
+    };
+  });
 
   return enhanced;
 };

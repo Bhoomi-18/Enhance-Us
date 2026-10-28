@@ -32,10 +32,17 @@ export const MainLayout = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+      {/* WCAG 2.2 Accessible Skip Link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-teal-600 focus:text-white focus:rounded-xl focus:shadow-elevated focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 font-bold text-xs"
+      >
+        Skip to main content
+      </a>
       <ColdStartNotice />
       <UnverifiedEmailNotice />
       <Navbar />
-      <main className="flex-1 flex flex-col w-full min-w-0">
+      <main id="main-content" role="main" tabIndex="-1" className="flex-1 flex flex-col w-full min-w-0 focus:outline-none">
         {user?.isDemo && (
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
             <DemoOnboardingTour onOpenResetModal={() => setIsResetModalOpen(true)} />

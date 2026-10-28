@@ -23,6 +23,7 @@ router.post('/onboarding/complete', completeOnboarding);
 router.post('/onboarding/dismiss', dismissOnboarding);
 router.delete('/me', deleteAccount);
 router.patch('/profile', updateProfile);
+router.put('/profile', updateProfile);
 
 // Skill Evidence endpoints on user profile
 router.put('/skills/:skillName/evidence', requireEmailVerified, addOrUpdateEvidence);

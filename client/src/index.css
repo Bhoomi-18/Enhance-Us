@@ -53,3 +53,27 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Accessibility: Respect system reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible high-contrast focus rings for keyboard navigation (WCAG 2.2 AA) */
+:focus-visible {
+  outline: 2px solid #0D9488;
+  outline-offset: 2px;
+}
+
+.dark :focus-visible {
+  outline: 2px solid #2DD4BF;
+  outline-offset: 2px;
+}
+

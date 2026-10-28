@@ -80,6 +80,7 @@ const challengeParticipationSchema = new mongoose.Schema(
 // Unique compound index preventing duplicate registrations per user per challenge
 challengeParticipationSchema.index({ challenge: 1, user: 1 }, { unique: true });
 challengeParticipationSchema.index({ challenge: 1, teamWorkspace: 1 });
+challengeParticipationSchema.index({ challenge: 1, status: 1 });
 challengeParticipationSchema.index({ user: 1, status: 1 });
 
 export const ChallengeParticipation = mongoose.model('ChallengeParticipation', challengeParticipationSchema);

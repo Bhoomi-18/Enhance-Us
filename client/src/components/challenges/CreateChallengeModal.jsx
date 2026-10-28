@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
@@ -8,6 +8,7 @@ import { createChallenge } from '../../services/challengeService';
 export const CreateChallengeModal = ({ isOpen, onClose, onChallengeCreated }) => {
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
   const inThirtyDays = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+  const scrollContainerRef = useRef(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -49,6 +50,7 @@ export const CreateChallengeModal = ({ isOpen, onClose, onChallengeCreated }) =>
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError(null);
 
@@ -56,6 +58,7 @@ export const CreateChallengeModal = ({ isOpen, onClose, onChallengeCreated }) =>
     if (title.length < 3) {
       setError('Title must be at least 3 characters');
       setLoading(false);
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -63,18 +66,21 @@ export const CreateChallengeModal = ({ isOpen, onClose, onChallengeCreated }) =>
     if (description.length < 10) {
       setError('Description must be at least 10 characters');
       setLoading(false);
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (!formData.associatedSkill.trim()) {
       setError('Associated skill domain is required');
       setLoading(false);
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (new Date(formData.startDate) >= new Date(formData.endDate)) {
       setError('End date must be strictly after the start date');
       setLoading(false);
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -90,6 +96,7 @@ export const CreateChallengeModal = ({ isOpen, onClose, onChallengeCreated }) =>
     if (cleanMilestones.length === 0) {
       setError('Please provide at least one milestone with a valid title');
       setLoading(false);
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -127,22 +134,52 @@ export const CreateChallengeModal = ({ isOpen, onClose, onChallengeCreated }) =>
           capacity: '',
           rules: '',
         });
+        setMilestones([
+          { title: 'Project Scope & Setup', description: 'Define initial architecture and repository foundations.', criteria: 'Repository link submitted with README.' },
+          { title: 'Core Implementation', description: 'Complete key feature deliverables with unit tests.', criteria: 'Pull request approved with passing tests.' },
+        ]);
       }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to create challenge');
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
   };
+
+  const footerContent = (
+    <div className="flex items-center justify-end gap-2.5 w-full">
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={onClose}
+        disabled={loading}
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        form="create-challenge-form"
+        variant="primary"
+        isLoading={loading}
+        disabled={loading}
+      >
+        Create Challenge
+      </Button>
+    </div>
+  );
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => !loading && onClose()}
       title="Create Community Challenge"
+      description="Launch a time-boxed sprint with deliverable milestones and peer participation."
       maxWidth="lg"
+      footer={footerContent}
+      bodyRef={scrollContainerRef}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="create-challenge-form" onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-center gap-2 text-xs text-rose-700 dark:text-rose-300">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -285,7 +322,7 @@ export const CreateChallengeModal = ({ isOpen, onClose, onChallengeCreated }) =>
             </button>
           </div>
 
-          <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div className="space-y-2.5">
             {milestones.map((m, idx) => (
               <div
                 key={idx}
@@ -334,15 +371,6 @@ export const CreateChallengeModal = ({ isOpen, onClose, onChallengeCreated }) =>
             rows={2}
             className="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
           />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" loading={loading}>
-            Create Challenge
-          </Button>
         </div>
       </form>
     </Modal>

@@ -252,6 +252,12 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Compound indexes for rapid matching and discovery queries
+userSchema.index({ isDemo: 1, isSuspended: 1 });
+userSchema.index({ 'skills.name': 1, 'skills.type': 1 });
+userSchema.index({ 'learningInterests.name': 1 });
+userSchema.index({ lastActiveAt: -1, createdAt: -1 });
+
 // Encrypt password using bcrypt before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
