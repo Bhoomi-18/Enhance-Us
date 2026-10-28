@@ -99,12 +99,12 @@ export const WorkspacesPage = () => {
     if (!searchQuery.trim()) return source;
 
     const q = searchQuery.toLowerCase();
-    return source.filter(
-      (ws) =>
-        ws.title?.toLowerCase().includes(q) ||
-        ws.associatedSkill?.toLowerCase().includes(q) ||
-        ws.description?.toLowerCase().includes(q)
-    );
+    return source.filter((ws) => {
+      const titleMatch = typeof ws?.title === 'string' && ws.title.toLowerCase().includes(q);
+      const skillMatch = typeof ws?.associatedSkill === 'string' && ws.associatedSkill.toLowerCase().includes(q);
+      const descMatch = typeof ws?.description === 'string' && ws.description.toLowerCase().includes(q);
+      return titleMatch || skillMatch || descMatch;
+    });
   };
 
   const displayItems = getDisplayItems();
