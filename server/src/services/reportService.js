@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Report, { REPORT_CATEGORIES, REPORT_STATUSES, MODERATION_ACTIONS } from '../models/reportModel.js';
 import User from '../models/userModel.js';
 import Review from '../models/reviewModel.js';
+import Challenge from '../models/challengeModel.js';
+import ChallengeUpdate from '../models/challengeUpdateModel.js';
 import { recordAuditLog } from './auditService.js';
 import { ApiError } from '../utils/apiError.js';
 
@@ -14,7 +16,7 @@ export const createReport = async (reporterId, reportData) => {
     throw new ApiError(400, `Category must be one of: ${REPORT_CATEGORIES.join(', ')}`);
   }
 
-  const validTargetTypes = ['USER', 'REVIEW', 'SKILL_EVIDENCE', 'CIRCLE_POST', 'OTHER'];
+  const validTargetTypes = ['USER', 'REVIEW', 'SKILL_EVIDENCE', 'CIRCLE_POST', 'CHALLENGE', 'CHALLENGE_UPDATE', 'OTHER'];
   if (!targetType || !validTargetTypes.includes(targetType)) {
     throw new ApiError(400, `Target type must be one of: ${validTargetTypes.join(', ')}`);
   }
@@ -41,6 +43,18 @@ export const createReport = async (reporterId, reportData) => {
       const review = await Review.findById(targetId.trim());
       if (!review) throw new ApiError(404, 'Reported review does not exist');
       resolvedReportedUserId = review.reviewer.toString();
+    }
+  } else if (targetType === 'CHALLENGE') {
+    if (mongoose.Types.ObjectId.isValid(targetId.trim())) {
+      const ch = await Challenge.findById(targetId.trim());
+      if (!ch) throw new ApiError(404, 'Reported challenge does not exist');
+      resolvedReportedUserId = ch.creator.toString();
+    }
+  } else if (targetType === 'CHALLENGE_UPDATE') {
+    if (mongoose.Types.ObjectId.isValid(targetId.trim())) {
+      const cup = await ChallengeUpdate.findById(targetId.trim());
+      if (!cup) throw new ApiError(404, 'Reported challenge update does not exist');
+      resolvedReportedUserId = cup.user.toString();
     }
   }
 
@@ -167,6 +181,15 @@ export const moderateReport = async (adminUser, reportId, moderationData) => {
   report.moderationNotes = cleanNotes || report.moderationNotes;
   report.moderatedBy = adminUser._id;
   report.moderatedAt = new Date();
+
+  // If action is CONTENT_REMOVED, handle challenge or update removal
+  if (actionTaken === 'CONTENT_REMOVED') {
+    if (report.targetType === 'CHALLENGE') {
+      await Challenge.findByIdAndUpdate(report.targetId, { isArchived: true, status: 'CANCELLED' }).catch(() => {});
+    } else if (report.targetType === 'CHALLENGE_UPDATE') {
+      await ChallengeUpdate.findByIdAndDelete(report.targetId).catch(() => {});
+    }
+  }
 
   // If action is USER_SUSPENDED, perform account suspension
   if (actionTaken === 'USER_SUSPENDED' && report.reportedUser) {

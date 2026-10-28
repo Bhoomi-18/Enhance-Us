@@ -19,7 +19,7 @@
  * Always clone via getCanonicalBaseline() before mutating in a workspace.
  */
 
-export const BASELINE_VERSION = '3.7.0';
+export const BASELINE_VERSION = '3.8.0';
 
 export const DEMO_USER_ID = 'demo_user_canonical_001';
 export const DEMO_PEER_ID = 'demo_peer_sarah_002';
@@ -1042,6 +1042,260 @@ export const CANONICAL_DEMO_BASELINE = {
       isArchived: false,
       createdAt: '2026-10-15T10:00:00.000Z',
       updatedAt: '2026-10-22T11:00:00.000Z',
+    },
+  ],
+
+  // 17. Community Challenges (V3.8)
+  communityChallenges: [
+    {
+      _id: 'ch_canonical_001',
+      title: '30-Day Full-Stack Microservice Sprint',
+      description: 'Collaborative team challenge to design, containerize, and deploy a decoupled event-driven microservice architecture with complete automated testing.',
+      associatedSkill: 'Full-Stack Development',
+      associatedGoalTitle: 'Master Full-Stack Microservices Architecture',
+      creator: {
+        _id: DEMO_USER_ID,
+        name: 'Alex Morgan',
+        email: 'demo@enhanceus.org',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+      },
+      startDate: '2026-10-01T00:00:00.000Z',
+      endDate: '2026-11-30T23:59:59.000Z',
+      participationType: 'TEAM',
+      visibility: 'PUBLIC',
+      capacity: 50,
+      status: 'ACTIVE',
+      milestones: [
+        {
+          _id: 'ch_ms_001',
+          title: 'Architecture Blueprint & Service Contracts',
+          description: 'Define OpenAPI/Swagger specifications and domain event schemas.',
+          criteria: 'All endpoints documented with schema validation schemas.',
+          order: 0,
+        },
+        {
+          _id: 'ch_ms_002',
+          title: 'Dockerization & Service Orchestration',
+          description: 'Compose multi-stage Docker builds and docker-compose healthchecks.',
+          criteria: 'Services launch cleanly with isolated networks and non-root users.',
+          order: 1,
+        },
+        {
+          _id: 'ch_ms_003',
+          title: 'End-to-End Automated CI Pipeline',
+          description: 'Implement integration suites and regression verification.',
+          criteria: 'All test suites pass with code coverage >= 80%.',
+          order: 2,
+        },
+      ],
+      rules: [
+        'All team code must be shared in workspace repositories.',
+        'Milestones must include verified pull request links or evidence.',
+        'Peer code reviews required prior to marking milestone complete.',
+      ],
+      isArchived: false,
+      createdAt: '2026-10-01T00:00:00.000Z',
+      updatedAt: '2026-10-22T12:00:00.000Z',
+    },
+    {
+      _id: 'ch_canonical_002',
+      title: 'Figma to React Component System Mastery',
+      description: 'Bridge design tokens and production code by building accessible, responsive UI primitives with comprehensive unit tests and Storybook docs.',
+      associatedSkill: 'UI/UX Design',
+      associatedGoalTitle: 'Design System & Component Architecture',
+      creator: {
+        _id: DEMO_PEER_ID,
+        name: 'Sarah Chen',
+        email: 'sarah.chen@example.com',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=250',
+      },
+      startDate: '2026-10-10T00:00:00.000Z',
+      endDate: '2026-11-20T23:59:59.000Z',
+      participationType: 'INDIVIDUAL',
+      visibility: 'PUBLIC',
+      capacity: 100,
+      status: 'ACTIVE',
+      milestones: [
+        {
+          _id: 'ch_ms_004',
+          title: 'Color Palette & Typography Token Hierarchy',
+          description: 'Extract and standardize design tokens in CSS custom variables.',
+          criteria: 'Light and dark themes defined with consistent contrast ratios.',
+          order: 0,
+        },
+        {
+          _id: 'ch_ms_005',
+          title: 'Accessible Button & Modal Primitives',
+          description: 'Build WCAG 2.1 AA compliant interactive components with focus traps.',
+          criteria: 'Full keyboard navigation and ARIA attribute compliance.',
+          order: 1,
+        },
+        {
+          _id: 'ch_ms_006',
+          title: 'Storybook Documentation & Interactive Playground',
+          description: 'Document component props, variants, and responsive states.',
+          criteria: 'All primitives tested across viewport sizes with zero axe-core violations.',
+          order: 2,
+        },
+      ],
+      rules: [
+        'Accessible color contrast must meet WCAG 2.1 AA.',
+        'Code must use vanilla CSS custom properties and React hooks.',
+      ],
+      isArchived: false,
+      createdAt: '2026-10-10T00:00:00.000Z',
+      updatedAt: '2026-10-20T10:00:00.000Z',
+    },
+    {
+      _id: 'ch_canonical_003',
+      title: 'Docker Production Security & Hardening',
+      description: 'Master non-root execution, vulnerability scanning with Trivy, and multi-stage build minimization for production container deployments.',
+      associatedSkill: 'Docker',
+      associatedGoalTitle: 'Container Security and DevOps',
+      creator: {
+        _id: DEMO_PEER_MARCUS_ID,
+        name: 'Marcus Vance',
+        email: 'marcus.vance@example.com',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
+      },
+      startDate: '2026-11-05T00:00:00.000Z',
+      endDate: '2026-12-15T23:59:59.000Z',
+      participationType: 'INDIVIDUAL',
+      visibility: 'PUBLIC',
+      capacity: 35,
+      status: 'UPCOMING',
+      milestones: [
+        {
+          _id: 'ch_ms_007',
+          title: 'Least-Privilege User Configuration',
+          description: 'Configure non-root USER directives and minimal file permissions.',
+          criteria: 'Containers fail security linters if run as UID 0.',
+          order: 0,
+        },
+        {
+          _id: 'ch_ms_008',
+          title: 'Trivy Scan & Distroless Base Migration',
+          description: 'Migrate Node/Go workloads to Google Distroless or Alpine images.',
+          criteria: 'Zero HIGH or CRITICAL CVEs reported in automated image scans.',
+          order: 1,
+        },
+      ],
+      rules: ['Submissions require Dockerfile and Trivy security report outputs.'],
+      isArchived: false,
+      createdAt: '2026-10-15T00:00:00.000Z',
+      updatedAt: '2026-10-22T08:00:00.000Z',
+    },
+  ],
+
+  // 18. Challenge Participations (V3.8)
+  challengeParticipations: [
+    {
+      _id: 'cp_001',
+      challenge: 'ch_canonical_001',
+      user: DEMO_USER_ID,
+      teamWorkspace: 'cws_001',
+      participationType: 'TEAM',
+      status: 'IN_PROGRESS',
+      progress: 33,
+      completedMilestones: [
+        {
+          milestoneId: 'ch_ms_001',
+          completedAt: '2026-10-18T14:30:00.000Z',
+          completedBy: DEMO_USER_ID,
+          note: 'Completed OpenAPI specification and event routing contracts in the workspace repository.',
+        },
+      ],
+      joinedAt: '2026-10-05T10:00:00.000Z',
+    },
+    {
+      _id: 'cp_002',
+      challenge: 'ch_canonical_002',
+      user: DEMO_USER_ID,
+      teamWorkspace: null,
+      participationType: 'INDIVIDUAL',
+      status: 'IN_PROGRESS',
+      progress: 67,
+      completedMilestones: [
+        {
+          milestoneId: 'ch_ms_004',
+          completedAt: '2026-10-15T11:00:00.000Z',
+          completedBy: DEMO_USER_ID,
+          note: 'Defined dark and light token sets in index.css with CSS custom variables.',
+        },
+        {
+          milestoneId: 'ch_ms_005',
+          completedAt: '2026-10-21T16:45:00.000Z',
+          completedBy: DEMO_USER_ID,
+          note: 'Built WCAG AA modal and button components with full keyboard accessibility.',
+        },
+      ],
+      joinedAt: '2026-10-11T09:00:00.000Z',
+    },
+  ],
+
+  // 19. Challenge Progress Updates (V3.8)
+  challengeUpdates: [
+    {
+      _id: 'cup_001',
+      challenge: 'ch_canonical_001',
+      user: {
+        _id: DEMO_USER_ID,
+        name: 'Alex Morgan',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+      },
+      teamWorkspace: 'cws_001',
+      milestone: 'ch_ms_001',
+      content: 'Finished drafting the API schemas for the auth and messaging microservices! We reviewed it in our workspace discussion.',
+      evidenceUrl: 'https://github.com/enhanceus/microservice-blueprint',
+      createdAt: '2026-10-18T14:35:00.000Z',
+    },
+    {
+      _id: 'cup_002',
+      challenge: 'ch_canonical_002',
+      user: {
+        _id: DEMO_USER_ID,
+        name: 'Alex Morgan',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+      },
+      teamWorkspace: null,
+      milestone: 'ch_ms_005',
+      content: 'Added keyboard trap and escape key listeners to our design system modal dialog. Passed axe-core automated audit with 0 warnings.',
+      evidenceUrl: 'https://github.com/enhanceus/accessible-primitives',
+      createdAt: '2026-10-21T16:50:00.000Z',
+    },
+  ],
+
+  // 20. User Achievements (V3.8)
+  userAchievements: [
+    {
+      _id: 'ach_001',
+      user: DEMO_USER_ID,
+      achievementKey: 'FIRST_CHALLENGE_JOINED',
+      title: 'Challenge Initiate',
+      description: 'Enrolled in your first community skill challenge.',
+      icon: 'Compass',
+      unlockedAt: '2026-10-05T10:00:00.000Z',
+      metadata: { challengeId: 'ch_canonical_001', title: '30-Day Full-Stack Microservice Sprint' },
+    },
+    {
+      _id: 'ach_002',
+      user: DEMO_USER_ID,
+      achievementKey: 'FIRST_CHALLENGE_MILESTONE',
+      title: 'Milestone Crusher',
+      description: 'Successfully reached and marked your first challenge milestone.',
+      icon: 'Target',
+      unlockedAt: '2026-10-15T11:00:00.000Z',
+      metadata: { challengeId: 'ch_canonical_002', milestoneId: 'ch_ms_004', title: 'Color Palette & Typography Token Hierarchy' },
+    },
+    {
+      _id: 'ach_003',
+      user: DEMO_USER_ID,
+      achievementKey: 'WORKSPACE_CONTRIBUTOR',
+      title: 'Collaborative Builder',
+      description: 'Contributed directly to completing a collaborative workspace deliverable.',
+      icon: 'Layers',
+      unlockedAt: '2026-10-18T10:00:00.000Z',
+      metadata: { workspaceId: 'cws_001', milestoneId: 'cws_ms_001', milestoneTitle: 'Project Setup & Architecture Blueprint' },
     },
   ],
 };

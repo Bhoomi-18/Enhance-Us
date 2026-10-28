@@ -25,6 +25,7 @@ import demoRoutes from './demoRoutes.js';
 import reportRoutes from './reportRoutes.js';
 import skillEvidenceRoutes from './skillEvidenceRoutes.js';
 import workspaceRoutes from './workspaceRoutes.js';
+import challengeRoutes from './challengeRoutes.js';
 
 const router = Router();
 
@@ -54,6 +55,7 @@ router.use('/reports', reportRoutes);
 router.use('/search', searchRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/workspaces', workspaceRoutes);
+router.use('/challenges', challengeRoutes);
 router.use('/demo', demoRoutes);
 
 export default router;

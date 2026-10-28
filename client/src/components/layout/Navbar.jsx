@@ -24,6 +24,7 @@ import {
   BookOpen,
   RotateCcw,
   Layers,
+  Trophy,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealth } from '../../hooks/useHealth';
@@ -143,6 +144,7 @@ export const Navbar = () => {
     location.pathname.startsWith('/roadmaps');
 
   const isCommunityActive =
+    location.pathname.startsWith('/challenges') ||
     location.pathname.startsWith('/circles') ||
     location.pathname.startsWith('/workspaces') ||
     location.pathname.startsWith('/matches') ||
@@ -176,6 +178,13 @@ export const Navbar = () => {
   ];
 
   const communityItems = [
+    {
+      label: 'Challenges',
+      path: '/challenges',
+      icon: Trophy,
+      description: 'Community skill sprints, team milestones & badges',
+      badge: 'V3.8',
+    },
     {
       label: 'Workspaces',
       path: '/workspaces',

@@ -36,7 +36,7 @@ const reportSchema = new mongoose.Schema(
     },
     targetType: {
       type: String,
-      enum: ['USER', 'REVIEW', 'SKILL_EVIDENCE', 'CIRCLE_POST', 'OTHER'],
+      enum: ['USER', 'REVIEW', 'SKILL_EVIDENCE', 'CIRCLE_POST', 'CHALLENGE', 'CHALLENGE_UPDATE', 'OTHER'],
       default: 'USER',
       required: true,
       index: true,

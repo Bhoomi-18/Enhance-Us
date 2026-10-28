@@ -29,10 +29,12 @@ import TrustProfileSection from '../components/trust/TrustProfileSection';
 import SkillEvidenceModal from '../components/skills/SkillEvidenceModal';
 import SkillEvidenceViewModal from '../components/skills/SkillEvidenceViewModal';
 import ReportModal from '../components/reports/ReportModal';
+import AchievementsList from '../components/challenges/AchievementsList';
 import { useAuth } from '../context/AuthContext';
 import { getPublicProfile, updateProfile } from '../services/userService';
 import { getUserReviews, updateReview, deleteReview } from '../services/reviewService';
 import { sendExchangeRequest, getPendingRequestStatus } from '../services/exchangeService';
+import { getMyAchievements, getPublicAchievements } from '../services/challengeService';
 
 export const ProfilePage = () => {
   const { id } = useParams();
@@ -92,6 +94,12 @@ export const ProfilePage = () => {
     message: '',
   });
 
+  const [achievementsData, setAchievementsData] = useState({
+    achievements: [],
+    unlockedCount: 0,
+    totalCount: 6,
+  });
+
   useEffect(() => {
     let isMounted = true;
     const loadProfileData = async () => {
@@ -99,13 +107,21 @@ export const ProfilePage = () => {
       try {
         const targetId = isSelf ? authUser?._id : id;
         if (targetId) {
-          const [profRes, revRes] = await Promise.all([
+          const [profRes, revRes, achRes] = await Promise.all([
             getPublicProfile(targetId),
             getUserReviews(targetId),
+            isSelf ? getMyAchievements().catch(() => null) : getPublicAchievements(targetId).catch(() => null),
           ]);
           if (isMounted) {
             if (profRes?.data?.user) setProfileUser(profRes.data.user);
             if (revRes?.data?.reviews) setReviews(revRes.data.reviews);
+            if (achRes?.data) {
+              setAchievementsData({
+                achievements: achRes.data.achievements || [],
+                unlockedCount: achRes.data.unlockedCount ?? (achRes.data.achievements || []).filter((a) => a.isUnlocked || a.unlockedAt).length,
+                totalCount: achRes.data.totalCount || 6,
+              });
+            }
           }
 
           // If viewing another peer's profile, check if a pending session request already exists
@@ -639,6 +655,15 @@ export const ProfilePage = () => {
           targetUserId={userToDisplay?._id}
           isOwner={isSelf}
           userSkills={userToDisplay?.skills || []}
+        />
+      </div>
+
+      {/* V3.8 Community Challenge Achievements */}
+      <div className="mb-8">
+        <AchievementsList
+          achievements={achievementsData.achievements}
+          unlockedCount={achievementsData.unlockedCount}
+          totalCount={achievementsData.totalCount}
         />
       </div>
 

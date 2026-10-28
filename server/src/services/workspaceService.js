@@ -4,6 +4,7 @@ import User from '../models/userModel.js';
 import Notification from '../models/notificationModel.js';
 import { ApiError } from '../utils/apiError.js';
 import { validateHttpUrl } from './skillEvidenceService.js';
+import { checkAndAwardAchievement } from './achievementService.js';
 export { validateHttpUrl };
 
 /**
@@ -429,6 +430,19 @@ export const updateMilestone = async (workspaceId, userId, milestoneId, updateDa
   }
 
   await ws.save();
+
+  if (status === 'COMPLETED') {
+    try {
+      await checkAndAwardAchievement(userId, 'WORKSPACE_CONTRIBUTOR', {
+        workspaceId,
+        milestoneId,
+        milestoneTitle: milestone.title,
+      });
+    } catch (achieveErr) {
+      console.warn('[Workspace Achievement Warning]', achieveErr.message);
+    }
+  }
+
   return milestone;
 };
 

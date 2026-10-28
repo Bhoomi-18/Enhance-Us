@@ -20,6 +20,12 @@ export const NOTIFICATION_TYPE_TO_CATEGORY = {
   CIRCLE_REQUEST_ACCEPTED: 'circleActivity',
   CIRCLE_ANNOUNCEMENT: 'circleActivity',
   PLATFORM_ANNOUNCEMENT: 'platformAnnouncements',
+  CHALLENGE_INVITE: 'peerActivity',
+  CHALLENGE_MILESTONE: 'goalReminders',
+  CHALLENGE_COMPLETED: 'goalReminders',
+  CHALLENGE_UPDATE: 'peerActivity',
+  ACHIEVEMENT_UNLOCKED: 'platformAnnouncements',
+  WORKSPACE_INVITE: 'peerActivity',
 };
 
 export const getUserNotifications = async (userId) => {

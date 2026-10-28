@@ -24,6 +24,8 @@ import CirclesPage from '../pages/CirclesPage';
 import CircleDetailPage from '../pages/CircleDetailPage';
 import WorkspacesPage from '../pages/WorkspacesPage';
 import WorkspaceDetailPage from '../pages/WorkspaceDetailPage';
+import ChallengesPage from '../pages/ChallengesPage';
+import ChallengeDetailPage from '../pages/ChallengeDetailPage';
 import CoachPage from '../pages/CoachPage';
 import CommunityInsightsPage from '../pages/CommunityInsightsPage';
 import AdminPage from '../pages/AdminPage';
@@ -180,6 +182,14 @@ export const AppRoutes = () => {
               <WorkspaceDetailPage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="challenges"
+          element={<ChallengesPage />}
+        />
+        <Route
+          path="challenges/:id"
+          element={<ChallengeDetailPage />}
         />
         <Route
           path="coach"

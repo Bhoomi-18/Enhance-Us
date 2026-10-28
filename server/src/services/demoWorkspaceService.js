@@ -4,6 +4,7 @@ import { getCanonicalBaseline, BASELINE_VERSION, DEMO_USER_ID } from '../fixture
 import { ApiError } from '../utils/apiError.js';
 import calculateSkillGaps from './skillGapEngine.js';
 import { normalizeSkillName } from '../utils/skillNormalizer.js';
+import { ACHIEVEMENT_DEFINITIONS } from '../models/userAchievementModel.js';
 
 // In-Memory store for offline testing or when MongoDB is disconnected
 export const mockWorkspacesMap = new Map();
@@ -1930,6 +1931,11 @@ export const updateCollaborativeMilestone = async (workspaceId, targetId, milest
         _id: user?._id || ws.userId,
         name: user?.name || ws.data.profile?.name || 'Alex Morgan',
       };
+      awardDemoAchievement(ws, user?._id || ws.userId, 'WORKSPACE_CONTRIBUTOR', {
+        workspaceId: targetId,
+        milestoneId,
+        milestoneTitle: milestone.title,
+      });
     } else {
       milestone.completedAt = null;
       milestone.completedBy = null;
@@ -2037,6 +2043,535 @@ export const addCollaborativeDiscussionMessage = async (workspaceId, targetId, c
 
   await saveWorkspace(ws);
   return newMsg;
+};
+
+// ==========================================
+// V3.8 COMMUNITY CHALLENGES & ACHIEVEMENTS (DEMO SANDBOX)
+// ==========================================
+
+export const deriveDemoChallengeStatus = (challenge) => {
+  if (challenge.status === 'CANCELLED' || challenge.status === 'DRAFT') {
+    return challenge.status;
+  }
+  const now = new Date();
+  const start = new Date(challenge.startDate);
+  const end = new Date(challenge.endDate);
+
+  if (now < start) return 'UPCOMING';
+  if (now >= start && now <= end) return 'ACTIVE';
+  return 'COMPLETED';
+};
+
+export const awardDemoAchievement = (ws, userId, key, metadata = {}) => {
+  ws.data.userAchievements = ws.data.userAchievements || [];
+  const def = ACHIEVEMENT_DEFINITIONS[key];
+  if (!def) return null;
+  const existing = ws.data.userAchievements.find((a) => a.achievementKey === key);
+  if (existing) return existing;
+
+  const newAch = {
+    _id: 'ach_demo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+    user: userId || DEMO_USER_ID,
+    achievementKey: key,
+    title: def.title,
+    description: def.description,
+    icon: def.icon,
+    unlockedAt: new Date().toISOString(),
+    metadata,
+  };
+  ws.data.userAchievements.push(newAch);
+
+  // Check meta-achievement: CHALLENGE_MASTER if >= 3 completed
+  if (key === 'FIRST_CHALLENGE_COMPLETED') {
+    const parts = (ws.data.challengeParticipations || []).filter((p) => p.status === 'COMPLETED');
+    if (parts.length >= 3) {
+      awardDemoAchievement(ws, userId, 'CHALLENGE_MASTER', { totalCompleted: parts.length });
+    }
+  }
+
+  return newAch;
+};
+
+export const getDemoChallenges = async (workspaceId, query = {}, user = null) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const challenges = ws.data.communityChallenges || [];
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+
+  const { skill, status, type, search } = query;
+
+  let filtered = challenges.filter((c) => !c.isArchived && c.visibility !== 'PRIVATE');
+
+  if (status) {
+    filtered = filtered.filter((c) => {
+      const derived = deriveDemoChallengeStatus(c);
+      return derived.toUpperCase() === status.toUpperCase();
+    });
+  }
+
+  if (type) {
+    filtered = filtered.filter((c) => c.participationType === type.toUpperCase());
+  }
+
+  if (skill) {
+    const sLower = skill.toLowerCase();
+    filtered = filtered.filter((c) => (c.associatedSkill || '').toLowerCase().includes(sLower));
+  }
+
+  if (search) {
+    const qLower = search.toLowerCase();
+    filtered = filtered.filter(
+      (c) =>
+        (c.title || '').toLowerCase().includes(qLower) ||
+        (c.description || '').toLowerCase().includes(qLower) ||
+        (c.associatedSkill || '').toLowerCase().includes(qLower)
+    );
+  }
+
+  const enhanced = filtered.map((c) => {
+    const derivedStatus = deriveDemoChallengeStatus(c);
+    const participations = (ws.data.challengeParticipations || []).filter(
+      (p) => p.challenge === c._id && p.status !== 'ABANDONED'
+    );
+    const userPart = participations.find((p) => String(p.user) === String(currentUserId));
+
+    return {
+      ...c,
+      status: derivedStatus,
+      participantCount: participations.length,
+      isJoined: Boolean(userPart),
+      userProgress: userPart ? userPart.progress || 0 : 0,
+    };
+  });
+
+  return enhanced;
+};
+
+export const getUserDemoChallenges = async (workspaceId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+  const challenges = ws.data.communityChallenges || [];
+  const participations = (ws.data.challengeParticipations || []).filter(
+    (p) => String(p.user) === String(currentUserId) && p.status !== 'ABANDONED'
+  );
+
+  const joinedChallenges = participations.map((p) => {
+    const ch = challenges.find((c) => c._id === p.challenge) || {};
+    let teamWorkspace = null;
+    if (p.teamWorkspace) {
+      teamWorkspace = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === p.teamWorkspace);
+    }
+    return {
+      ...ch,
+      participationId: p._id,
+      participationStatus: p.status,
+      participationType: p.participationType,
+      teamWorkspace,
+      progress: p.progress,
+      completedMilestonesCount: (p.completedMilestones || []).length,
+      joinedAt: p.joinedAt,
+    };
+  });
+
+  const createdChallenges = challenges.filter(
+    (c) => (c.creator?._id === currentUserId || c.creator === currentUserId) && !c.isArchived
+  );
+
+  return {
+    joinedChallenges,
+    createdChallenges,
+  };
+};
+
+export const getDemoChallengeById = async (workspaceId, challengeId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+  const ch = (ws.data.communityChallenges || []).find((c) => c._id === challengeId && !c.isArchived);
+
+  if (!ch) throw new ApiError(404, 'Challenge not found');
+
+  const participations = (ws.data.challengeParticipations || []).filter(
+    (p) => p.challenge === challengeId && p.status !== 'ABANDONED'
+  );
+
+  const userParticipation = participations.find((p) => String(p.user) === String(currentUserId)) || null;
+
+  let participatingTeams = [];
+  if (ch.participationType === 'TEAM') {
+    const teamParts = participations.filter((p) => p.teamWorkspace);
+    participatingTeams = teamParts.map((tp) => {
+      const teamWs = (ws.data.collaborativeWorkspaces || []).find((w) => w._id === tp.teamWorkspace);
+      return {
+        ...tp,
+        teamWorkspace: teamWs || { _id: tp.teamWorkspace, title: 'Collaborative Team' },
+      };
+    });
+  }
+
+  return {
+    ...ch,
+    status: deriveDemoChallengeStatus(ch),
+    participantCount: participations.length,
+    userParticipation,
+    participatingTeams,
+  };
+};
+
+export const createDemoChallenge = async (workspaceId, challengeData, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+
+  const {
+    title,
+    description,
+    associatedSkill,
+    associatedGoalTitle,
+    startDate,
+    endDate,
+    participationType,
+    visibility,
+    capacity,
+    milestones,
+    rules,
+  } = challengeData || {};
+
+  const cleanTitle = (title || '').trim();
+  if (cleanTitle.length < 3) throw new ApiError(400, 'Title must be at least 3 characters');
+  if (cleanTitle.length > 120) throw new ApiError(400, 'Title cannot exceed 120 characters');
+
+  const cleanDesc = (description || '').trim();
+  if (cleanDesc.length < 10) throw new ApiError(400, 'Description must be at least 10 characters');
+
+  if (!associatedSkill || !associatedSkill.trim()) {
+    throw new ApiError(400, 'Associated skill is required');
+  }
+
+  if (!startDate || !endDate) {
+    throw new ApiError(400, 'Both start date and end date are required');
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+    throw new ApiError(400, 'End date must be strictly after the start date');
+  }
+
+  const cleanMilestones = (Array.isArray(milestones) ? milestones : [])
+    .map((m, idx) => {
+      const mTitle = (m.title || '').trim();
+      if (!mTitle) return null;
+      return {
+        _id: 'ch_ms_demo_' + Date.now() + '_' + idx,
+        title: mTitle.slice(0, 150),
+        description: (m.description || '').trim().slice(0, 500),
+        criteria: (m.criteria || '').trim().slice(0, 300),
+        order: idx,
+      };
+    })
+    .filter(Boolean);
+
+  const newChallenge = {
+    _id: 'ch_demo_' + Date.now(),
+    title: cleanTitle,
+    description: cleanDesc,
+    associatedSkill: associatedSkill.trim(),
+    associatedGoalTitle: (associatedGoalTitle || '').trim().slice(0, 150),
+    creator: {
+      _id: currentUserId,
+      name: user?.name || ws.data.profile?.name || 'Alex Morgan',
+      email: user?.email || 'demo@enhanceus.org',
+      avatar: user?.avatar || ws.data.profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+    },
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+    participationType: participationType === 'TEAM' ? 'TEAM' : 'INDIVIDUAL',
+    visibility: visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC',
+    capacity: capacity ? Math.min(1000, Math.max(1, parseInt(capacity, 10))) : null,
+    status: deriveDemoChallengeStatus({ startDate: start, endDate: end }),
+    milestones: cleanMilestones,
+    rules: Array.isArray(rules) ? rules.map((r) => String(r).trim()).filter(Boolean) : [],
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  ws.data.communityChallenges = ws.data.communityChallenges || [];
+  ws.data.communityChallenges.unshift(newChallenge);
+  await saveWorkspace(ws);
+
+  return newChallenge;
+};
+
+export const updateDemoChallenge = async (workspaceId, challengeId, updateData, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const ch = (ws.data.communityChallenges || []).find((c) => c._id === challengeId);
+  if (!ch) throw new ApiError(404, 'Challenge not found');
+
+  if (ch.status === 'CANCELLED') throw new ApiError(400, 'Cancelled challenges cannot be edited');
+
+  const { title, description, associatedSkill, capacity, rules, milestones, visibility } = updateData || {};
+  if (title !== undefined) ch.title = title.trim().slice(0, 120);
+  if (description !== undefined) ch.description = description.trim().slice(0, 2000);
+  if (associatedSkill !== undefined) ch.associatedSkill = associatedSkill.trim().slice(0, 50);
+  if (capacity !== undefined) ch.capacity = capacity ? parseInt(capacity, 10) : null;
+  if (rules !== undefined && Array.isArray(rules)) ch.rules = rules.map((r) => String(r).trim()).filter(Boolean);
+  if (visibility !== undefined) ch.visibility = visibility;
+  if (Array.isArray(milestones)) {
+    ch.milestones = milestones.map((m, idx) => ({
+      _id: m._id || 'ch_ms_demo_' + Date.now() + '_' + idx,
+      title: (m.title || '').trim().slice(0, 150),
+      description: (m.description || '').trim().slice(0, 500),
+      criteria: (m.criteria || '').trim().slice(0, 300),
+      order: idx,
+    }));
+  }
+
+  ch.updatedAt = new Date().toISOString();
+  await saveWorkspace(ws);
+  return ch;
+};
+
+export const cancelDemoChallenge = async (workspaceId, challengeId, reason, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const ch = (ws.data.communityChallenges || []).find((c) => c._id === challengeId);
+  if (!ch) throw new ApiError(404, 'Challenge not found');
+
+  ch.status = 'CANCELLED';
+  ch.updatedAt = new Date().toISOString();
+  await saveWorkspace(ws);
+  return { message: 'Challenge has been cancelled successfully', status: 'CANCELLED' };
+};
+
+export const joinDemoChallenge = async (workspaceId, challengeId, options = {}, user = null) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+  const ch = (ws.data.communityChallenges || []).find((c) => c._id === challengeId);
+  if (!ch) throw new ApiError(404, 'Challenge not found');
+
+  if (ch.status === 'CANCELLED') throw new ApiError(400, 'Cannot join a cancelled challenge');
+
+  ws.data.challengeParticipations = ws.data.challengeParticipations || [];
+  const existing = ws.data.challengeParticipations.find(
+    (p) => p.challenge === challengeId && String(p.user) === String(currentUserId)
+  );
+
+  if (existing) {
+    if (existing.status !== 'ABANDONED') {
+      throw new ApiError(409, 'You have already joined this challenge');
+    }
+    existing.status = 'IN_PROGRESS';
+    existing.joinedAt = new Date().toISOString();
+    await saveWorkspace(ws);
+    awardDemoAchievement(ws, currentUserId, 'FIRST_CHALLENGE_JOINED', { challengeId, title: ch.title });
+    return { message: 'Re-enrolled in challenge successfully', participation: existing };
+  }
+
+  const newPart = {
+    _id: 'cp_demo_' + Date.now(),
+    challenge: challengeId,
+    user: currentUserId,
+    teamWorkspace: options.teamWorkspaceId || null,
+    participationType: ch.participationType,
+    status: 'IN_PROGRESS',
+    progress: 0,
+    completedMilestones: [],
+    joinedAt: new Date().toISOString(),
+  };
+
+  ws.data.challengeParticipations.push(newPart);
+
+  // Award First Challenge Joined achievement
+  awardDemoAchievement(ws, currentUserId, 'FIRST_CHALLENGE_JOINED', { challengeId, title: ch.title });
+
+  await saveWorkspace(ws);
+  return { message: 'Joined challenge successfully', participation: newPart };
+};
+
+export const leaveDemoChallenge = async (workspaceId, challengeId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+  const part = (ws.data.challengeParticipations || []).find(
+    (p) => p.challenge === challengeId && String(p.user) === String(currentUserId) && p.status !== 'ABANDONED'
+  );
+  if (!part) throw new ApiError(404, 'You are not an active participant in this challenge');
+
+  part.status = 'ABANDONED';
+  await saveWorkspace(ws);
+  return { message: 'You have left the challenge' };
+};
+
+export const completeDemoMilestone = async (workspaceId, challengeId, milestoneId, note = '', user = null) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+  const ch = (ws.data.communityChallenges || []).find((c) => c._id === challengeId);
+  if (!ch) throw new ApiError(404, 'Challenge not found');
+
+  const milestone = (ch.milestones || []).find((m) => m._id === milestoneId);
+  if (!milestone) throw new ApiError(404, 'Milestone not found in this challenge');
+
+  let part = (ws.data.challengeParticipations || []).find(
+    (p) => p.challenge === challengeId && String(p.user) === String(currentUserId) && p.status !== 'ABANDONED'
+  );
+
+  // If team participation check
+  if (!part && ch.participationType === 'TEAM') {
+    part = (ws.data.challengeParticipations || []).find(
+      (p) => p.challenge === challengeId && p.teamWorkspace && p.status !== 'ABANDONED'
+    );
+  }
+
+  if (!part) throw new ApiError(403, 'Permission denied: You must be an active participant to complete milestones');
+
+  part.completedMilestones = part.completedMilestones || [];
+  const alreadyCompleted = part.completedMilestones.some((m) => m.milestoneId === milestoneId);
+  if (alreadyCompleted) {
+    return {
+      message: 'Milestone is already marked as completed',
+      participation: part,
+      progress: part.progress,
+    };
+  }
+
+  part.completedMilestones.push({
+    milestoneId,
+    completedAt: new Date().toISOString(),
+    completedBy: currentUserId,
+    note: (note || '').trim().slice(0, 300),
+  });
+
+  const total = (ch.milestones || []).length;
+  const count = part.completedMilestones.length;
+  part.progress = total > 0 ? Math.round((count / total) * 100) : 100;
+
+  let isCompleted = false;
+  if (count >= total) {
+    part.status = 'COMPLETED';
+    part.completedAt = new Date().toISOString();
+    isCompleted = true;
+  }
+
+  // Award achievements
+  awardDemoAchievement(ws, currentUserId, 'FIRST_CHALLENGE_MILESTONE', { challengeId, milestoneId, title: milestone.title });
+
+  if (isCompleted) {
+    awardDemoAchievement(ws, currentUserId, 'FIRST_CHALLENGE_COMPLETED', { challengeId, title: ch.title });
+    if (part.participationType === 'TEAM') {
+      awardDemoAchievement(ws, currentUserId, 'FIRST_TEAM_CHALLENGE_COMPLETED', { challengeId, teamWorkspace: part.teamWorkspace, title: ch.title });
+    }
+  }
+
+  await saveWorkspace(ws);
+  return {
+    message: isCompleted ? '🎉 Congratulations! Challenge completed!' : 'Milestone marked as complete',
+    participation: part,
+    progress: part.progress,
+    isCompleted,
+  };
+};
+
+export const undoDemoMilestone = async (workspaceId, challengeId, milestoneId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+  const ch = (ws.data.communityChallenges || []).find((c) => c._id === challengeId);
+  if (!ch) throw new ApiError(404, 'Challenge not found');
+
+  const part = (ws.data.challengeParticipations || []).find(
+    (p) => p.challenge === challengeId && (String(p.user) === String(currentUserId) || p.teamWorkspace) && p.status !== 'ABANDONED'
+  );
+  if (!part) throw new ApiError(403, 'Permission denied');
+
+  part.completedMilestones = (part.completedMilestones || []).filter((m) => m.milestoneId !== milestoneId);
+  const total = (ch.milestones || []).length;
+  part.progress = total > 0 ? Math.round((part.completedMilestones.length / total) * 100) : 0;
+  part.status = 'IN_PROGRESS';
+  part.completedAt = null;
+
+  await saveWorkspace(ws);
+  return { message: 'Milestone progress reverted', participation: part, progress: part.progress };
+};
+
+export const createDemoChallengeUpdate = async (workspaceId, challengeId, updateData, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const currentUserId = user?._id || ws.userId || DEMO_USER_ID;
+  const ch = (ws.data.communityChallenges || []).find((c) => c._id === challengeId);
+  if (!ch) throw new ApiError(404, 'Challenge not found');
+
+  const { content, milestone, evidenceUrl, teamWorkspaceId } = updateData || {};
+  const cleanContent = (content || '').trim();
+  if (!cleanContent) throw new ApiError(400, 'Update message cannot be empty');
+
+  const newUpdate = {
+    _id: 'cup_demo_' + Date.now(),
+    challenge: challengeId,
+    user: {
+      _id: currentUserId,
+      name: user?.name || ws.data.profile?.name || 'Alex Morgan',
+      avatar: user?.avatar || ws.data.profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+    },
+    teamWorkspace: teamWorkspaceId || null,
+    milestone: milestone || null,
+    content: cleanContent,
+    evidenceUrl: evidenceUrl || '',
+    createdAt: new Date().toISOString(),
+  };
+
+  ws.data.challengeUpdates = ws.data.challengeUpdates || [];
+  ws.data.challengeUpdates.unshift(newUpdate);
+  await saveWorkspace(ws);
+  return newUpdate;
+};
+
+export const getDemoChallengeUpdates = async (workspaceId, challengeId, pagination = {}) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const updates = (ws.data.challengeUpdates || []).filter((u) => u.challenge === challengeId);
+
+  const page = Math.max(1, parseInt(pagination.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(pagination.limit, 10) || 20));
+  const start = (page - 1) * limit;
+  const paginated = updates.slice(start, start + limit);
+
+  return {
+    updates: paginated,
+    pagination: {
+      page,
+      limit,
+      total: updates.length,
+      totalPages: Math.ceil(updates.length / limit) || 1,
+    },
+  };
+};
+
+export const deleteDemoChallengeUpdate = async (workspaceId, challengeId, updateId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  ws.data.challengeUpdates = (ws.data.challengeUpdates || []).filter(
+    (u) => !(u._id === updateId && u.challenge === challengeId)
+  );
+  await saveWorkspace(ws);
+  return { message: 'Update removed successfully' };
+};
+
+export const getUserDemoAchievements = async (workspaceId, user) => {
+  const ws = await getOrCreateWorkspace(workspaceId);
+  const unlocked = ws.data.userAchievements || [];
+  const unlockedKeys = new Set(unlocked.map((a) => a.achievementKey));
+
+  const allAchievements = Object.values(ACHIEVEMENT_DEFINITIONS).map((def) => {
+    const found = unlocked.find((u) => u.achievementKey === def.key);
+    return {
+      key: def.key,
+      title: def.title,
+      description: def.description,
+      icon: def.icon,
+      isUnlocked: unlockedKeys.has(def.key),
+      unlockedAt: found ? found.unlockedAt : null,
+      metadata: found ? found.metadata : null,
+    };
+  });
+
+  return {
+    achievements: allAchievements,
+    unlockedCount: unlocked.length,
+    totalCount: Object.keys(ACHIEVEMENT_DEFINITIONS).length,
+  };
 };
 
 
