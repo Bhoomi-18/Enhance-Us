@@ -546,7 +546,18 @@ export const ProfilePage = () => {
                     })}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">No teaching skills listed.</p>
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-200 dark:border-slate-700/80 text-center space-y-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {isSelf
+                        ? "You haven't added skills you can teach. Offering skills allows peers with complementary knowledge to find and match with you."
+                        : "No teaching skills listed."}
+                    </p>
+                    {isSelf && (
+                      <Button size="sm" variant="outline" onClick={() => setIsEditModalOpen(true)}>
+                        + Add Teachable Skills
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -563,7 +574,18 @@ export const ProfilePage = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">No learning interests listed.</p>
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-200 dark:border-slate-700/80 text-center space-y-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {isSelf
+                        ? "You haven't added skills you want to learn. Specifying target skills helps our reciprocal engine connect you with expert mentors."
+                        : "No learning interests listed."}
+                    </p>
+                    {isSelf && (
+                      <Button size="sm" variant="outline" onClick={() => setIsEditModalOpen(true)}>
+                        + Add Learning Interests
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </CardContent>

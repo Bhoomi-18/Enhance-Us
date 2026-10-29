@@ -40,6 +40,8 @@ const analyticsEventSchema = new mongoose.Schema(
 // TTL index: automatically expire raw event records after 90 days (7,776,000 seconds)
 // This preserves MongoDB storage on Render/Atlas free tier while keeping analytics fast.
 analyticsEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 });
+analyticsEventSchema.index({ eventType: 1, timestamp: -1 });
+analyticsEventSchema.index({ userId: 1, eventType: 1 });
 
 export const AnalyticsEvent = mongoose.model('AnalyticsEvent', analyticsEventSchema);
 export default AnalyticsEvent;

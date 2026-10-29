@@ -3,6 +3,7 @@ import Session from '../models/sessionModel.js';
 import User from '../models/userModel.js';
 import Connection from '../models/connectionModel.js';
 import Notification from '../models/notificationModel.js';
+import { recordEvent } from './analyticsService.js';
 import { ApiError } from '../utils/apiError.js';
 
 export const mockSessionsStore = [];
@@ -255,7 +256,6 @@ export const createSession = async (userId, sessionData) => {
     status: 'SCHEDULED',
   });
 
-  // 9. Create notification for recipient
   try {
     await Notification.create({
       recipient: resolvedRecipientId,
@@ -268,6 +268,16 @@ export const createSession = async (userId, sessionData) => {
   } catch (notifErr) {
     console.warn('[Notification Error]', notifErr.message);
   }
+
+  recordEvent({
+    eventType: 'session_scheduled',
+    userId,
+    metadata: {
+      sessionId: session._id,
+      skillTaught: skillTaught.trim(),
+      recipientId: resolvedRecipientId,
+    },
+  }).catch(() => {});
 
   const populated = await Session.findById(session._id)
     .populate('participants', 'name email avatar reputation')
@@ -350,6 +360,15 @@ export const completeSession = async (sessionId, userId) => {
   }
 
   await session.save();
+
+  recordEvent({
+    eventType: 'session_completed',
+    userId,
+    metadata: {
+      sessionId: session._id,
+      skillTaught: session.skillTaught,
+    },
+  }).catch(() => {});
 
   const populated = await Session.findById(session._id)
     .populate('participants', 'name email avatar reputation')

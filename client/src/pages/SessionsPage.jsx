@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -29,6 +29,7 @@ import { useAuth } from '../context/AuthContext';
 
 export const SessionsPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [sessions, setSessions] = useState([]);
   const [connections, setConnections] = useState([]);
@@ -305,13 +306,17 @@ export const SessionsPage = () => {
           {error}
         </div>
       ) : sessions.length === 0 ? (
-        <Card>
+        <Card className="p-2">
           <EmptyState
             icon={Calendar}
-            title="No Scheduled Exchange Sessions"
-            description="Once you have an active exchange connection, schedule structured learning sessions here."
-            actionLabel="Schedule First Session"
-            onAction={handleOpenScheduleModal}
+            title={connections.length === 0 ? "Connect with a Peer to Schedule Sessions" : "No Scheduled Exchange Sessions"}
+            description={
+              connections.length === 0
+                ? "You need an active exchange connection before scheduling a 1-on-1 session. Explore compatible peer matches or reciprocal requests to connect."
+                : "You have active peer connections! Pick a date and time to start your reciprocal knowledge exchange."
+            }
+            actionLabel={connections.length === 0 ? "Find Peer Partners" : "Schedule First Session"}
+            onAction={connections.length === 0 ? () => navigate('/matches') : handleOpenScheduleModal}
           />
         </Card>
       ) : (

@@ -178,18 +178,32 @@ export const DashboardPage = () => {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 <CardTitle className="text-base">Getting Started Checklist</CardTitle>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                  {feed.onboarding.steps.filter((s) => s.completed).length} of {feed.onboarding.steps.length} completed
+                </span>
               </div>
               <CardDescription>
-                Complete these 3 foundational steps to unlock reciprocal skill exchanges.
+                Complete these foundational steps to unlock reciprocal skill exchanges.
               </CardDescription>
             </div>
-            <button
-              onClick={handleDismissOnboardingCard}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Dismiss checklist"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsTourModalOpen(true)}
+                leftIcon={Compass}
+                className="text-indigo-600 dark:text-indigo-400 text-xs hidden sm:inline-flex"
+              >
+                Platform Guide
+              </Button>
+              <button
+                onClick={handleDismissOnboardingCard}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Dismiss checklist"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

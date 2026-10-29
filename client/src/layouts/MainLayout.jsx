@@ -16,13 +16,20 @@ export const MainLayout = () => {
 
   useEffect(() => {
     const isDismissedLocal = typeof window !== 'undefined' && localStorage.getItem('enhanceus_tour_dismissed') === 'true';
+    const isExistingActiveUser = Boolean(
+      (user?.skills && user.skills.length > 0) ||
+      (user?.learningInterests && user.learningInterests.length > 0) ||
+      (user?.sessionsCompleted && user.sessionsCompleted > 0)
+    );
+
     if (
       isAuthenticated &&
       user &&
       !user.isDemo &&
       !user.onboardingCompletedAt &&
       !user.dismissedOnboardingAt &&
-      !isDismissedLocal
+      !isDismissedLocal &&
+      !isExistingActiveUser
     ) {
       setShowTour(true);
     } else {

@@ -1,5 +1,6 @@
 import * as exchangeService from '../services/exchangeService.js';
 import * as demoWorkspaceService from '../services/demoWorkspaceService.js';
+import { recordEvent } from '../services/analyticsService.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { HTTP_STATUS } from '../constants/index.js';
 
@@ -10,6 +11,16 @@ export const createRequest = async (req, res, next) => {
       return ApiResponse.success(res, 'Exchange request sent successfully', { exchangeRequest }, HTTP_STATUS.CREATED);
     }
     const exchangeRequest = await exchangeService.createExchangeRequest(req.user._id, req.body);
+
+    recordEvent({
+      eventType: 'exchange_request_created',
+      userId: req.user._id,
+      metadata: {
+        recipientId: req.body?.recipientId,
+        isDemo: Boolean(req.user?.isDemo),
+      },
+    }).catch(() => {});
+
     return ApiResponse.success(res, 'Exchange request sent successfully', { exchangeRequest }, HTTP_STATUS.CREATED);
   } catch (error) {
     next(error);

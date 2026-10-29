@@ -2,6 +2,7 @@ import Goal from '../models/goalModel.js';
 import User from '../models/userModel.js';
 import goalAnalysisService from './goalAnalysisService.js';
 import calculateSkillGaps from './skillGapEngine.js';
+import { recordEvent } from './analyticsService.js';
 import { ApiError } from '../utils/apiError.js';
 import { normalizeSkillName } from '../utils/skillNormalizer.js';
 
@@ -138,6 +139,16 @@ export const createGoal = async (userId, goalData) => {
     skillGaps: gaps,
     progress: gaps.progress,
   });
+
+  recordEvent({
+    eventType: 'goal_created',
+    userId,
+    metadata: {
+      goalId: goal._id,
+      requiredSkillsCount: requiredSkills.length,
+      isDemo: Boolean(user.isDemo),
+    },
+  }).catch(() => {});
 
   return goal;
 };

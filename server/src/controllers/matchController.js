@@ -1,5 +1,6 @@
 import * as matchingService from '../services/matchingService.js';
 import * as demoWorkspaceService from '../services/demoWorkspaceService.js';
+import { recordEvent } from '../services/analyticsService.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 
 export const getMatches = async (req, res, next) => {
@@ -55,6 +56,12 @@ export const getMatches = async (req, res, next) => {
         (m) => (m.candidate?.availability || 'flexible').toLowerCase() === availability.toLowerCase()
       );
     }
+
+    recordEvent({
+      eventType: 'matches_viewed',
+      userId: req.user._id,
+      metadata: { count: matches.length, isDemo: Boolean(req.user?.isDemo) },
+    }).catch(() => {});
 
     return ApiResponse.success(res, 'Matches generated successfully', {
       matches,

@@ -1,5 +1,6 @@
 import User from '../models/userModel.js';
 import * as demoWorkspaceService from '../services/demoWorkspaceService.js';
+import { recordEvent } from '../services/analyticsService.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import { HTTP_STATUS } from '../constants/index.js';
@@ -26,6 +27,29 @@ export const updateProfile = async (req, res, next) => {
       }
     });
 
+    // Normalize skills schema if array of strings or legacy objects are sent
+    if (Array.isArray(updates.skills)) {
+      updates.skills = updates.skills.map((item) => {
+        if (typeof item === 'string') {
+          return { name: item, category: 'General', level: 'INTERMEDIATE', type: 'TEACH' };
+        }
+        return {
+          name: item.name,
+          category: item.category || 'General',
+          level: (item.level || item.proficiency || 'INTERMEDIATE').toUpperCase(),
+          type: item.type || 'TEACH',
+          ...(item.evidence ? { evidence: item.evidence } : {}),
+        };
+      });
+    }
+
+    // Normalize learningInterests if array of strings is provided
+    if (Array.isArray(updates.learningInterests)) {
+      updates.learningInterests = updates.learningInterests.map((item) =>
+        typeof item === 'string' ? { name: item, category: 'General', priority: 'HIGH' } : item
+      );
+    }
+
     if (req.user?.isDemo && req.user?.workspaceId) {
       const updatedUser = await demoWorkspaceService.updateProfile(req.user.workspaceId, updates);
       return ApiResponse.success(res, 'Profile updated successfully', { user: updatedUser });
@@ -40,8 +64,25 @@ export const updateProfile = async (req, res, next) => {
     if (!user) throw new ApiError(404, 'User not found');
 
     Object.assign(user, updates);
-
     await user.save();
+
+    // Telemetry: record skill and profile events
+    if (updates.skills && updates.skills.length > 0) {
+      await recordEvent({
+        eventType: 'teachable_skills_added',
+        userId: user._id,
+        metadata: { skillsCount: updates.skills.length, isDemo: Boolean(user.isDemo) },
+      }).catch(() => {});
+    }
+
+    if (user.skills?.length > 0 && user.learningInterests?.length > 0) {
+      await recordEvent({
+        eventType: 'profile_setup_completed',
+        userId: user._id,
+        metadata: { isDemo: Boolean(user.isDemo) },
+      }).catch(() => {});
+    }
+
     return ApiResponse.success(res, 'Profile updated successfully', { user });
   } catch (error) {
     next(error);
@@ -94,7 +135,16 @@ export const completeOnboarding = async (req, res, next) => {
       await user.save();
     }
 
-    return ApiResponse.success(res, 'Onboarding completed successfully', { user });
+    await recordEvent({
+      eventType: 'onboarding_completed',
+      userId: user._id,
+      metadata: { isDemo: Boolean(user.isDemo) },
+    }).catch(() => {});
+
+    return ApiResponse.success(res, 'Onboarding completed successfully', {
+      user,
+      onboardingCompletedAt: user.onboardingCompletedAt,
+    });
   } catch (error) {
     next(error);
   }
@@ -116,6 +166,12 @@ export const dismissOnboarding = async (req, res, next) => {
 
     user.dismissedOnboardingAt = new Date();
     await user.save();
+
+    await recordEvent({
+      eventType: 'onboarding_dismissed',
+      userId: user._id,
+      metadata: { isDemo: Boolean(user.isDemo) },
+    }).catch(() => {});
 
     return ApiResponse.success(res, 'Onboarding dismissed successfully', {
       dismissedOnboardingAt: user.dismissedOnboardingAt,

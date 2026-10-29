@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   Users,
   Target,
@@ -26,6 +27,8 @@ import EmptyState from '../components/ui/EmptyState';
 import { getMatches } from '../services/matchService';
 
 export const MatchesPage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -175,13 +178,29 @@ export const MatchesPage = () => {
           {error}
         </div>
       ) : matches.length === 0 ? (
-        <Card>
+        <Card className="p-2">
           <EmptyState
             icon={Users}
-            title="No Compatible Matches Found"
-            description="Try relaxing your filters, updating your skills in Profile, or creating an active Goal with skill gaps."
-            actionLabel="View Profile & Skills"
-            onAction={() => (window.location.href = '/profile')}
+            title={
+              (!user?.skills || user.skills.length === 0)
+                ? "Offer Skills to Unlock Reciprocal Peer Matches"
+                : "No Compatible Peer Matches Found"
+            }
+            description={
+              (!user?.skills || user.skills.length === 0)
+                ? "EnhanceUs pairs you based on mutual exchange: skills you can teach and skills you want to learn. Add at least one teachable skill in your profile and define a target goal to find matching partners."
+                : "No peers match your current filter criteria. Try relaxing the fit score filter, adjusting availability, or using universal discovery to browse all skills and mentors."
+            }
+            actionLabel={
+              (!user?.skills || user.skills.length === 0)
+                ? "Add Teachable Skills"
+                : "Search All Skills & Peers"
+            }
+            onAction={
+              (!user?.skills || user.skills.length === 0)
+                ? () => navigate('/profile')
+                : () => navigate('/search')
+            }
           />
         </Card>
       ) : (

@@ -8,6 +8,7 @@ import { createFilteredNotification } from './notificationService.js';
 import { ApiError } from '../utils/apiError.js';
 import { checkAndAwardAchievement } from './achievementService.js';
 import { validateHttpUrl } from './skillEvidenceService.js';
+import { recordEvent } from './analyticsService.js';
 
 /**
  * Derives current lifecycle status from dates and stored state.
@@ -551,6 +552,16 @@ export const joinChallenge = async (challengeId, userId, options = {}) => {
   // Award First Challenge Joined achievement
   await checkAndAwardAchievement(userId, 'FIRST_CHALLENGE_JOINED', { challengeId, title: challenge.title });
 
+  recordEvent({
+    eventType: 'challenge_joined',
+    userId,
+    metadata: {
+      challengeId,
+      participationType: participation.participationType,
+      isDemo: Boolean(challenge.isDemo),
+    },
+  }).catch(() => {});
+
   return {
     message: 'Joined challenge successfully',
     participation,
@@ -684,6 +695,16 @@ export const completeMilestone = async (challengeId, milestoneId, userId, note =
         title: challenge.title,
       });
     }
+
+    recordEvent({
+      eventType: 'challenge_completed',
+      userId,
+      metadata: {
+        challengeId,
+        participationType: participation.participationType,
+        isDemo: Boolean(challenge.isDemo),
+      },
+    }).catch(() => {});
   }
 
   return {

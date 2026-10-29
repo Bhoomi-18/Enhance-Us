@@ -1,6 +1,7 @@
 import * as authService from '../services/authService.js';
 import { provisionDemoAccount } from '../services/demoProvisioningService.js';
 import { validateRegisterInput, validateLoginInput } from '../validators/authValidator.js';
+import { recordEvent } from '../services/analyticsService.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { HTTP_STATUS } from '../constants/index.js';
 
@@ -15,6 +16,15 @@ export const register = async (req, res, next) => {
   try {
     validateRegisterInput(req.body);
     const { user, token } = await authService.registerUser(req.body);
+
+    // Track user registration event for privacy-conscious aggregate telemetry
+    recordEvent({
+      eventType: 'user_registered',
+      userId: user._id,
+      metadata: { emailDomain: user.email?.split('@')[1] },
+      ip: req.ip,
+      userAgent: req.headers?.['user-agent'],
+    });
 
     // Set secure HTTP-only cookie
     res.cookie('token', token, COOKIE_OPTIONS);

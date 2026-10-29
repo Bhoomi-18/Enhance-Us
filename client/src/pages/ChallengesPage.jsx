@@ -249,6 +249,9 @@ export const ChallengesPage = () => {
               <p className="text-xs text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
                 No community challenges match your current search criteria. Try clearing filters or create a new challenge!
               </p>
+              <Button size="sm" onClick={() => setIsCreateModalOpen(true)}>
+                Create Challenge
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -274,8 +277,14 @@ export const ChallengesPage = () => {
             </h2>
 
             {userChallenges.joinedChallenges?.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-400">
-                You have not joined any community challenges yet. Explore active challenges to start!
+              <div className="p-10 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs space-y-3">
+                <Trophy className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
+                <p className="text-slate-600 dark:text-slate-400 font-medium">
+                  You have not enrolled in any community challenges yet. Join an active sprint to work on deliverables with peers and earn verified badges.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => setActiveTab('explore')}>
+                  Explore Community Challenges
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

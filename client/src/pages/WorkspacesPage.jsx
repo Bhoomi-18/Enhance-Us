@@ -249,8 +249,18 @@ export const WorkspacesPage = () => {
                 ? 'There are currently no public workspaces matching your filter. Be the first to create one!'
                 : 'You have not created or joined any collaborative workspaces yet. Start one now to track shared goals with peers.'
             }
-            actionLabel={activeTab === 'my-workspaces' ? 'Create First Workspace' : undefined}
-            onAction={activeTab === 'my-workspaces' ? () => setIsCreateModalOpen(true) : undefined}
+            actionLabel={
+              activeTab === 'my-workspaces'
+                ? 'Create First Workspace'
+                : activeTab === 'discover'
+                ? 'Create Workspace'
+                : 'Explore Public Workspaces'
+            }
+            onAction={
+              activeTab === 'my-workspaces' || activeTab === 'discover'
+                ? () => setIsCreateModalOpen(true)
+                : () => setActiveTab('discover')
+            }
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

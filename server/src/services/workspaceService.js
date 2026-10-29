@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Workspace from '../models/workspaceModel.js';
 import User from '../models/userModel.js';
 import Notification from '../models/notificationModel.js';
+import { recordEvent } from './analyticsService.js';
 import { ApiError } from '../utils/apiError.js';
 import { validateHttpUrl } from './skillEvidenceService.js';
 import { checkAndAwardAchievement } from './achievementService.js';
@@ -55,6 +56,17 @@ export const createWorkspace = async (userId, workspaceData) => {
     },
     discussions: [],
   });
+
+  recordEvent({
+    eventType: 'workspace_created',
+    userId,
+    metadata: {
+      workspaceId: workspace._id,
+      visibility: vis,
+      associatedSkill: cleanSkill,
+      isDemo: Boolean(user.isDemo),
+    },
+  }).catch(() => {});
 
   return await Workspace.findById(workspace._id)
     .populate('owner', 'name email avatar')
